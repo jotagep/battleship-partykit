@@ -1,0 +1,29 @@
+{
+	"name": "partykit-battleship-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-02-07",
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "battleship-db",
+			"database_id": "4ecc8015-c35d-4318-8add-69c1795d048f",
+			"migrations_dir": "drizzle/",
+			"file": ".wrangler/d1/battleship.sqlite"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "BATTLESHIP-PARTY",
+				"class_name": "Battleship"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["Battleship"]
+		}
+	]
+}

@@ -1,102 +1,222 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+// A tiny PartySocket demo against the Battleship PartyServer.
+"use client"
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
+import { usePartySocket } from "partysocket/react"
+import { type FormEvent, useEffect, useMemo, useState } from "react"
+import { authClient } from "../src/lib/auth"
+import styles from "./page.module.css"
 
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+type LogEntry = {
+	id: string
+	text: string
+	kind: "system" | "local" | "remote"
+}
 
-  return (
-    <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
+function formatMessage(data: MessageEvent["data"]): string {
+	if (typeof data === "string") return data
+	if (data instanceof ArrayBuffer) return new TextDecoder().decode(data)
+	return new TextDecoder().decode(data.buffer)
+}
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+	const [host, setHost] = useState("localhost:8787")
+	const [room, setRoom] = useState("demo-room")
+	const [message, setMessage] = useState("")
+	const [status, setStatus] = useState("connecting")
+	const [log, setLog] = useState<LogEntry[]>([])
+	const {
+		data: session,
+		isPending: sessionLoading,
+		refetch: refetchSession,
+	} = authClient.useSession()
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turborepo.com/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turborepo.com?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.com →
-        </a>
-      </footer>
-    </div>
-  );
+	const endpoint = useMemo(
+		() =>
+			`${host.replace(/^https?:\/\//, "")}/parties/battleship-party/${room}`,
+		[host, room]
+	)
+
+	const socket = usePartySocket({
+		host,
+		party: "battleship-party",
+		room,
+		onOpen() {
+			setStatus("connected")
+			setLog((prev) => [
+				...prev,
+				{ id: crypto.randomUUID(), kind: "system", text: "Connected" },
+			])
+		},
+		onClose(evt) {
+			setStatus("closed")
+			setLog((prev) => [
+				...prev,
+				{
+					id: crypto.randomUUID(),
+					kind: "system",
+					text: `Closed (${evt.code})`,
+				},
+			])
+		},
+		onError() {
+			setStatus("error")
+			setLog((prev) => [
+				...prev,
+				{
+					id: crypto.randomUUID(),
+					kind: "system",
+					text: "Socket error",
+				},
+			])
+		},
+		onMessage(evt) {
+			let text = formatMessage(evt.data)
+			try {
+				const parsed = JSON.parse(text)
+				if (parsed?.message) {
+					text = parsed.message
+				} else if (parsed?.type) {
+					text = JSON.stringify(parsed)
+				}
+			} catch (_err) {
+				// ignore parse errors, show raw
+			}
+			setLog((prev) => [
+				...prev,
+				{ id: crypto.randomUUID(), kind: "remote", text },
+			])
+		},
+	})
+
+	useEffect(() => {
+		setStatus("connecting")
+		setLog([
+			{
+				id: crypto.randomUUID(),
+				kind: "system",
+				text: `Connecting to ${endpoint}`,
+			},
+		])
+	}, [endpoint])
+
+	const canSend = socket?.readyState === WebSocket.OPEN && !!session
+
+	const sendMessage = (e: FormEvent) => {
+		e.preventDefault()
+		const text = message.trim()
+		if (!text || !socket) return
+		socket.send(text)
+		setLog((prev) => [
+			...prev,
+			{ id: crypto.randomUUID(), kind: "local", text },
+		])
+		setMessage("")
+	}
+
+	return (
+		<div className={styles.page}>
+			<main className={styles.main}>
+				<div className={styles.card}>
+					<div className={styles.header}>
+						<div>
+							<p className={styles.label}>Hono + PartyServer demo</p>
+							<h1 className={styles.title}>Battleship chat</h1>
+						</div>
+						<span className={styles.badge}>{status}</span>
+					</div>
+					<div className={styles.authRow}>
+						{session ? (
+							<>
+								<div className={styles.user}>
+									<span>{session.user.email ?? "Signed in"}</span>
+								</div>
+								<button
+									type="button"
+									onClick={() =>
+										authClient.signOut().then(() => {
+											setLog((prev) => [
+												...prev,
+												{
+													id: crypto.randomUUID(),
+													kind: "system",
+													text: "Signed out",
+												},
+											])
+											refetchSession()
+										})
+									}
+								>
+									Logout
+								</button>
+							</>
+						) : (
+							<button
+								type="button"
+								disabled={sessionLoading}
+								onClick={() =>
+									authClient.signIn.social({
+										provider: "google",
+										callbackURL: window.location.href,
+									})
+								}
+							>
+								Login con Google
+							</button>
+						)}
+					</div>
+
+					<div className={styles.grid}>
+						<label className={styles.field}>
+							<span>API host (wrangler dev)</span>
+							<input
+								value={host}
+								onChange={(e) => setHost(e.target.value)}
+								placeholder="localhost:8787"
+							/>
+						</label>
+						<label className={styles.field}>
+							<span>Room</span>
+							<input
+								value={room}
+								onChange={(e) => setRoom(e.target.value)}
+								placeholder="demo-room"
+							/>
+						</label>
+						<div className={styles.field}>
+							<span>Endpoint</span>
+							<code className={styles.code}>
+								{endpoint.split("/").slice(1).join("/")}
+							</code>
+						</div>
+					</div>
+
+					<form className={styles.form} onSubmit={sendMessage}>
+						<input
+							value={message}
+							onChange={(e) => setMessage(e.target.value)}
+							placeholder="Say hi to the room"
+							disabled={!canSend}
+						/>
+						<button type="submit" disabled={!canSend || !message.trim()}>
+							Send
+						</button>
+					</form>
+
+					<div className={styles.log} aria-live="polite">
+						{log.map((entry) => (
+							<div
+								key={entry.id}
+								className={`${styles.logLine} ${styles[entry.kind]}`}
+							>
+								{entry.text}
+							</div>
+						))}
+						{log.length === 0 && (
+							<div className={styles.logLine}>Waiting for messages…</div>
+						)}
+					</div>
+				</div>
+			</main>
+		</div>
+	)
 }
