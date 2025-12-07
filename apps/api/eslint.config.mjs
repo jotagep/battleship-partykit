@@ -1,3 +1,3 @@
-import { config } from "@repo/eslint-config/base";
+import { cloudflareWorkerConfig } from '@repo/eslint-config/cloudflare-worker'
 
-export default config;
+export default cloudflareWorkerConfig
