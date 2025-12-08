@@ -14,9 +14,9 @@
     "@repo/ui": "*",
     "better-auth": "^1.4.5",
     "next": "^16.0.7",
-    "partysocket": "^1.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "partysocket": "^1.1.6",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
@@ -24,7 +24,10 @@
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "autoprefixer": "^10.4.22",
     "eslint": "^9.39.1",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^4.1.17",
     "typescript": "5.9.2"
   }
 }
