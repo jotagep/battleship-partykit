@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { TacticalButton } from '@/components/ui/TacticalButton'
 
 import { authClient } from '@/lib/auth'
 
@@ -24,7 +24,7 @@ interface LobbyProps {
   onCreateRoom: () => void
 }
 
-export function Lobby({ onJoinRoom, onCreateRoom }: LobbyProps) {
+export function RoomList({ onJoinRoom, onCreateRoom }: LobbyProps) {
   const { data: session } = authClient.useSession()
 
   return (
@@ -38,14 +38,14 @@ export function Lobby({ onJoinRoom, onCreateRoom }: LobbyProps) {
             <span className="text-xs font-spacemono text-cyan-700 uppercase">
               Operator: {session.user.name}
             </span>
-            <Button
+            <TacticalButton
               variant="ghost"
               size="sm"
               onClick={() => authClient.signOut()}
               className="text-xs font-spacemono text-red-400 hover:text-red-300 hover:bg-transparent hover:underline p-0 h-auto"
             >
               Logout
-            </Button>
+            </TacticalButton>
           </div>
         )}
       </div>
@@ -53,9 +53,9 @@ export function Lobby({ onJoinRoom, onCreateRoom }: LobbyProps) {
       <Card>
         <CardHeader>
           <CardTitle>ACTIVE MISSIONS</CardTitle>
-          <Button variant="secondary" onClick={onCreateRoom}>
+          <TacticalButton variant="secondary" onClick={onCreateRoom}>
             New Operation
-          </Button>
+          </TacticalButton>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -93,11 +93,11 @@ export function Lobby({ onJoinRoom, onCreateRoom }: LobbyProps) {
                 </div>
                 <div className="text-right">
                   {room.status === 'WAITING' ? (
-                    <Button onClick={() => onJoinRoom(room.id)}>Join</Button>
+                    <TacticalButton onClick={() => onJoinRoom(room.id)}>Join</TacticalButton>
                   ) : (
-                    <Button variant="outline" disabled>
+                    <TacticalButton variant="outline" disabled>
                       Observe
-                    </Button>
+                    </TacticalButton>
                   )}
                 </div>
               </div>

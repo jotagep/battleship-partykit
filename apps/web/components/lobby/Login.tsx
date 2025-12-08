@@ -1,6 +1,6 @@
 import { authClient } from '@/lib/auth'
 
-export function LandingPage() {
+export function Login() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-12 z-10">
       <div className="space-y-4">
