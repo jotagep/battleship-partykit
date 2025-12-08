@@ -1,9 +1,11 @@
 // A tiny PartySocket demo against the Battleship PartyServer.
 'use client'
 
-import { usePartySocket } from 'partysocket/react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { authClient } from '../src/lib/auth'
+import { usePartySocket } from 'partysocket/react'
+
+import { authClient } from '../lib/auth'
+
 import styles from './page.module.css'
 
 type LogEntry = {
