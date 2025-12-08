@@ -4,7 +4,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { usePartySocket } from 'partysocket/react'
 
-import { authClient } from '../lib/auth'
+import { authClient } from '@/lib/auth'
 
 import styles from './page.module.css'
 
