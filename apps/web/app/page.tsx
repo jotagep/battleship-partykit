@@ -1,207 +1,42 @@
-// A tiny PartySocket demo against the Battleship PartyServer.
 'use client'
 
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { usePartySocket } from 'partysocket/react'
+import { useState } from 'react'
+
+import { GameRoom } from '@/components/game-room'
+import { LandingPage } from '@/components/landing-page'
+import { Lobby } from '@/components/lobby'
 
 import { authClient } from '@/lib/auth'
 
-import styles from './page.module.css'
-
-type LogEntry = {
-  id: string
-  text: string
-  kind: 'system' | 'local' | 'remote'
-}
-
-function formatMessage(data: MessageEvent['data']): string {
-  if (typeof data === 'string') return data
-  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data)
-  return new TextDecoder().decode(data.buffer)
-}
-
 export default function Home() {
-  const [host, setHost] = useState('localhost:8787')
-  const [room, setRoom] = useState('demo-room')
-  const [message, setMessage] = useState('')
-  const [status, setStatus] = useState('connecting')
-  const [log, setLog] = useState<LogEntry[]>([])
-  const {
-    data: session,
-    isPending: sessionLoading,
-    refetch: refetchSession,
-  } = authClient.useSession()
+  const { data: session, isPending: sessionLoading } = authClient.useSession()
+  const [currentRoom, setCurrentRoom] = useState<string | null>(null)
 
-  const endpoint = useMemo(
-    () => `${host.replace(/^https?:\/\//, '')}/parties/battleship-party/${room}`,
-    [host, room],
-  )
-
-  const socket = usePartySocket({
-    host,
-    party: 'battleship-party',
-    room,
-    onOpen() {
-      setStatus('connected')
-      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'system', text: 'Connected' }])
-    },
-    onClose(evt) {
-      setStatus('closed')
-      setLog((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          kind: 'system',
-          text: `Closed (${evt.code})`,
-        },
-      ])
-    },
-    onError() {
-      setStatus('error')
-      setLog((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          kind: 'system',
-          text: 'Socket error',
-        },
-      ])
-    },
-    onMessage(evt) {
-      let text = formatMessage(evt.data)
-      try {
-        const parsed = JSON.parse(text)
-        if (parsed?.message) {
-          text = parsed.message
-        } else if (parsed?.type) {
-          text = JSON.stringify(parsed)
-        }
-      } catch (_err: unknown) {
-        console.error('Error parsing message', _err)
-      }
-      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'remote', text }])
-    },
-  })
-
-  useEffect(() => {
-    setStatus('connecting')
-    setLog([
-      {
-        id: crypto.randomUUID(),
-        kind: 'system',
-        text: `Connecting to ${endpoint}`,
-      },
-    ])
-  }, [endpoint])
-
-  const canSend = socket?.readyState === WebSocket.OPEN && !!session
-
-  const sendMessage = (e: FormEvent) => {
-    e.preventDefault()
-    const text = message.trim()
-    if (!text || !socket) return
-    socket.send(text)
-    setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'local', text }])
-    setMessage('')
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-cyan-500 font-spacemono">
+        INITIALIZING SYSTEM...
+      </div>
+    )
   }
 
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <div className={styles.card}>
-          <div className={styles.header}>
-            <div>
-              <p className={styles.label}>Hono + PartyServer demo</p>
-              <h1 className={styles.title}>Battleship chat</h1>
-            </div>
-            <span className={styles.badge}>{status}</span>
-          </div>
-          <div className={styles.authRow}>
-            {session ? (
-              <>
-                <div className={styles.user}>
-                  <span>{session.user.email ?? 'Signed in'}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    authClient.signOut().then(() => {
-                      setLog((prev) => [
-                        ...prev,
-                        {
-                          id: crypto.randomUUID(),
-                          kind: 'system',
-                          text: 'Signed out',
-                        },
-                      ])
-                      refetchSession()
-                    })
-                  }
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                disabled={sessionLoading}
-                onClick={() =>
-                  authClient.signIn.social({
-                    provider: 'google',
-                    callbackURL: window.location.href,
-                  })
-                }
-              >
-                Login con Google
-              </button>
-            )}
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 font-rajdhani bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-slate-900 via-void to-void">
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
 
-          <div className={styles.grid}>
-            <label className={styles.field}>
-              <span>API host (wrangler dev)</span>
-              <input
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                placeholder="localhost:8787"
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Room</span>
-              <input
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                placeholder="demo-room"
-              />
-            </label>
-            <div className={styles.field}>
-              <span>Endpoint</span>
-              <code className={styles.code}>{endpoint.split('/').slice(1).join('/')}</code>
-            </div>
-          </div>
-
-          <form className={styles.form} onSubmit={sendMessage}>
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Say hi to the room"
-              disabled={!canSend}
-            />
-            <button type="submit" disabled={!canSend || !message.trim()}>
-              Send
-            </button>
-          </form>
-
-          <div className={styles.log} aria-live="polite">
-            {log.map((entry) => (
-              <div key={entry.id} className={`${styles.logLine} ${styles[entry.kind]}`}>
-                {entry.text}
-              </div>
-            ))}
-            {log.length === 0 && <div className={styles.logLine}>Waiting for messages…</div>}
-          </div>
-        </div>
-      </main>
+      {!session ? (
+        <LandingPage />
+      ) : currentRoom ? (
+        <GameRoom roomId={currentRoom} onLeave={() => setCurrentRoom(null)} />
+      ) : (
+        <Lobby
+          onJoinRoom={(roomId) => setCurrentRoom(roomId)}
+          onCreateRoom={() => {
+            const newRoomId = `OP-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+            setCurrentRoom(newRoomId)
+          }}
+        />
+      )}
     </div>
   )
 }
