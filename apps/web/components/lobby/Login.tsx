@@ -28,7 +28,6 @@ export function Login() {
           AUTHENTICATE ACCESS
         </span>
 
-        {/* Decorative corners */}
         <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyan-500" />
         <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500" />
         <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500" />

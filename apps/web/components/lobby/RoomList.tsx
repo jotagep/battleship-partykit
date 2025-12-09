@@ -36,7 +36,7 @@ export function RoomList({ onJoinRoom, onCreateRoom }: LobbyProps) {
         {session && (
           <div className="flex items-center gap-4">
             <span className="text-xs font-spacemono text-cyan-700 uppercase">
-              Operator: {session.user.name}
+              Operator: <b>{session.user.name}</b>
             </span>
             <TacticalButton
               variant="ghost"

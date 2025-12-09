@@ -1,6 +1,8 @@
 'use client'
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import type { BroadcastMessage, WelcomeMessage } from '@repo/shared/messages'
+import { isBroadcastMessage, isWelcomeMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
 import { authClient } from '@/lib/auth'
@@ -38,6 +40,7 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     host,
     party: 'battleship-party',
     room: roomId,
+    query: session ? { userId: session.user.id } : {},
     onOpen() {
       setStatus('connected')
       setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'system', text: 'Connected' }])
@@ -67,10 +70,15 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     onMessage(evt) {
       let text = formatMessage(evt.data)
       try {
-        const parsed = JSON.parse(text)
-        if (parsed?.message) {
-          text = parsed.message
-        } else if (parsed?.type) {
+        const parsed: unknown = JSON.parse(text)
+
+        if (isWelcomeMessage(parsed)) {
+          const welcomeMsg: WelcomeMessage = parsed
+          text = `Welcome! Connected as ${session?.user.name} to room ${welcomeMsg.room}`
+        } else if (isBroadcastMessage(parsed)) {
+          const broadcastMsg: BroadcastMessage = parsed
+          text = `${broadcastMsg.from}: ${broadcastMsg.message}`
+        } else if (typeof parsed === 'object' && parsed !== null && 'type' in parsed) {
           text = JSON.stringify(parsed)
         }
       } catch (_err: unknown) {

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 
 import { Login } from '@/components/lobby/Login'
 import { RoomList } from '@/components/lobby/RoomList'
+import { Loading } from '@/components/ui/Loading'
 
 import { authClient } from '@/lib/auth'
 
@@ -12,11 +13,7 @@ export default function Home() {
   const router = useRouter()
 
   if (sessionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-cyan-500 font-spacemono">
-        INITIALIZING SYSTEM...
-      </div>
-    )
+    return <Loading />
   }
 
   return (
