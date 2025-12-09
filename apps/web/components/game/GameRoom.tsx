@@ -1,7 +1,6 @@
 'use client'
 
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import type { BroadcastMessage, WelcomeMessage } from '@repo/shared/messages'
 import { isBroadcastMessage, isWelcomeMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
@@ -40,7 +39,6 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     host,
     party: 'battleship-party',
     room: roomId,
-    query: session ? { userId: session.user.id } : {},
     onOpen() {
       setStatus('connected')
       setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'system', text: 'Connected' }])
@@ -69,22 +67,23 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     },
     onMessage(evt) {
       let text = formatMessage(evt.data)
+      let kind: LogEntry['kind'] = 'remote'
       try {
         const parsed: unknown = JSON.parse(text)
 
         if (isWelcomeMessage(parsed)) {
-          const welcomeMsg: WelcomeMessage = parsed
-          text = `Welcome! Connected as ${session?.user.name} to room ${welcomeMsg.room}`
+          text = `Welcome! Connected as ${session?.user.name} to room ${parsed.room}`
+          kind = 'system'
         } else if (isBroadcastMessage(parsed)) {
-          const broadcastMsg: BroadcastMessage = parsed
-          text = `${broadcastMsg.from}: ${broadcastMsg.message}`
+          kind = parsed.from === 'system' ? 'system' : 'remote'
+          text = `${parsed.from === 'system' ? '' : `${parsed.from}: `}${parsed.message}`
         } else if (typeof parsed === 'object' && parsed !== null && 'type' in parsed) {
           text = JSON.stringify(parsed)
         }
       } catch (_err: unknown) {
         console.error('Error parsing message', _err)
       }
-      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'remote', text }])
+      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind, text }])
     },
   })
 

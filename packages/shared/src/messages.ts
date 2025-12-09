@@ -50,8 +50,7 @@ export function isWelcomeMessage(message: unknown): message is WelcomeMessage {
     typeof message === 'object' &&
     message !== null &&
     'type' in message &&
-    message.type === MessageType.WELCOME &&
-    'id' in message
+    message.type === MessageType.WELCOME
   )
 }
 

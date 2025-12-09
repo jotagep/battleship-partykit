@@ -44,7 +44,25 @@ app.get('/rooms/:roomName', (c) => {
 app.on(['GET', 'POST', 'OPTIONS'], '/auth/*', (c) => auth(c.env).handler(c.req.raw))
 
 // Hand off PartyServer traffic (websocket + HTTP) to the Battleship party.
-app.use('/parties/*', partyserverMiddleware<ApiEnv>())
+app.use(
+  '/parties/*',
+  partyserverMiddleware<ApiEnv>({
+    options: {
+      onBeforeConnect: async (req) => {
+        const cookie = req.headers.get('cookie') ?? ''
+
+        const hasAuthToken =
+          cookie.includes('better-auth.session_token=') || cookie.includes('better-auth.state=')
+
+        if (!hasAuthToken) {
+          return new Response('Unauthorized: Missing authentication token', { status: 401 })
+        }
+
+        return
+      },
+    },
+  }),
+)
 
 export { Battleship }
 export default app

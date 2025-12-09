@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { type Connection, type ConnectionContext, Server, type WSMessage } from 'partyserver'
 
+import { auth } from '../auth'
 import { type User, user as userTable } from '../db/schema'
 import type { BindingsEnv } from '../types/env'
 
@@ -19,27 +20,17 @@ export class Battleship extends Server<BindingsEnv> {
   users: Record<string, User> = {}
 
   async onConnect(connection: Connection, ctx: ConnectionContext): Promise<void> {
-    // Obtener userId del query string
-    const url = new URL(ctx.request.url)
-    const userId = url.searchParams.get('userId')
+    const cookie = ctx.request.headers.get('cookie') ?? ''
 
-    let user: User | undefined = undefined
+    const response = await auth(this.env).api.getSession({ headers: { cookie } })
 
-    if (userId) {
-      try {
-        const db = drizzle(this.env.DB)
-        const userData = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1)
-
-        if (userData.length > 0) {
-          user = userData[0]
-          if (user) {
-            this.users[connection.id] = user
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user from DB:', error)
-      }
+    if (!response || !response.session || !response.user) {
+      connection.close()
+      return
     }
+
+    const user: User = response.user as User
+    this.users[connection.id] = user
 
     const welcomeMessage: WelcomeMessage = {
       type: 'welcome',
@@ -51,7 +42,7 @@ export class Battleship extends Server<BindingsEnv> {
       type: 'broadcast',
       room: this.name,
       from: 'system',
-      message: `${user?.name ?? connection.id} has joined the battle`,
+      message: `${user.name ?? connection.id} has joined the battle`,
     }
     this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
   }
@@ -63,7 +54,7 @@ export class Battleship extends Server<BindingsEnv> {
     const broadcastMessage: BroadcastMessage = {
       type: 'broadcast',
       room: this.name,
-      from: connection.id,
+      from: this.users[connection.id]?.name ?? connection.id,
       message: text,
     }
     this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
