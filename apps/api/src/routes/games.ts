@@ -1,10 +1,15 @@
-import { createErrorResponse, ErrorCode } from '@repo/shared/errors'
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  ErrorCode,
+  SuccessCode,
+} from '@repo/shared/apiMessage'
 import { CreateGameBody, JoinGameBody, UpdateGameBody } from '@repo/shared/games'
-import { eq } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
+import { and, eq, isNull } from 'drizzle-orm'
 import { Hono } from 'hono'
 
 import { game } from '../db/schema'
+import { getDB } from '../db/utils'
 import { BindingsEnv } from '../types/env'
 
 type GamesEnv = { Bindings: BindingsEnv }
@@ -14,7 +19,7 @@ const gamesRouter = new Hono<GamesEnv>()
 /**
  * CREATE - Create a new game
  * POST /games
- * Body: { player1Id: string, name: string, accessCode?: string }
+ * Body: CreateGameBody
  */
 gamesRouter.post('/', async (c) => {
   const body: CreateGameBody = await c.req.json()
@@ -32,7 +37,7 @@ gamesRouter.post('/', async (c) => {
   }
 
   try {
-    const db = drizzle(c.env.DB)
+    const db = getDB(c.env)
     const newGame = {
       id: crypto.randomUUID(),
       name,
@@ -47,7 +52,7 @@ gamesRouter.post('/', async (c) => {
 
     await db.insert(game).values(newGame)
 
-    return c.json(newGame, 201)
+    return c.json(createSuccessResponse(SuccessCode.GAME_CREATED, newGame), 201)
   } catch (error) {
     console.error('Error creating game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -60,15 +65,12 @@ gamesRouter.post('/', async (c) => {
  */
 gamesRouter.get('/public', async (c) => {
   try {
-    const db = drizzle(c.env.DB)
-    const results = await db.select().from(game)
+    const db = getDB(c.env)
+    const results = await db.query.game.findMany({
+      where: and(eq(game.status, 'waiting'), isNull(game.accessCode)),
+    })
 
-    // Filter in memory for public waiting games
-    const publicGames = results.filter(
-      (g: typeof game.$inferSelect) => g.status === 'waiting' && !g.accessCode,
-    )
-
-    return c.json(publicGames)
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, results))
   } catch (error) {
     console.error('Error fetching public games:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -83,14 +85,16 @@ gamesRouter.get('/:gameId', async (c) => {
   const gameId = c.req.param('gameId')
 
   try {
-    const db = drizzle(c.env.DB)
-    const result = await db.select().from(game).where(eq(game.id, gameId))
+    const db = getDB(c.env)
+    const result = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    if (result.length === 0) {
+    if (!result) {
       return c.json(createErrorResponse(ErrorCode.GAME_NOT_FOUND), 404)
     }
 
-    return c.json(result[0])
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, result))
   } catch (error) {
     console.error('Error fetching game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -105,15 +109,20 @@ gamesRouter.get('/user/:userId', async (c) => {
   const userId = c.req.param('userId')
 
   try {
-    const db = drizzle(c.env.DB)
-    const results = await db.select().from(game)
+    const db = getDB(c.env)
+    // Get games where user is player1 or player2
+    const [player1Games, player2Games] = await Promise.all([
+      db.query.game.findMany({
+        where: eq(game.player1Id, userId),
+      }),
+      db.query.game.findMany({
+        where: eq(game.player2Id, userId),
+      }),
+    ])
 
-    // Filter in memory for games where user is player1 or player2
-    const userGames = results.filter(
-      (g: typeof game.$inferSelect) => g.player1Id === userId || g.player2Id === userId,
-    )
+    const userGames = [...player1Games, ...player2Games]
 
-    return c.json(userGames)
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, userGames))
   } catch (error) {
     console.error('Error fetching user games:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -123,7 +132,7 @@ gamesRouter.get('/user/:userId', async (c) => {
 /**
  * UPDATE - Join a game as player2
  * PATCH /games/:gameId/join
- * Body: { player2Id: string, accessCode?: string }
+ * Body: JoinGameBody
  */
 gamesRouter.patch('/:gameId/join', async (c) => {
   const gameId = c.req.param('gameId')
@@ -138,14 +147,14 @@ gamesRouter.patch('/:gameId/join', async (c) => {
   }
 
   try {
-    const db = drizzle(c.env.DB)
-    const result = await db.select().from(game).where(eq(game.id, gameId))
+    const db = getDB(c.env)
+    const currentGame = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    if (result.length === 0) {
+    if (!currentGame) {
       return c.json(createErrorResponse(ErrorCode.GAME_NOT_FOUND), 404)
     }
-
-    const currentGame = result[0]!
 
     // Check if game is still waiting
     if (currentGame.status !== 'waiting') {
@@ -172,9 +181,11 @@ gamesRouter.patch('/:gameId/join', async (c) => {
       })
       .where(eq(game.id, gameId))
 
-    const updatedGame = await db.select().from(game).where(eq(game.id, gameId))
+    const updatedGame = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    return c.json(updatedGame[0])
+    return c.json(createSuccessResponse(SuccessCode.GAME_JOINED, updatedGame))
   } catch (error) {
     console.error('Error joining game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -184,7 +195,7 @@ gamesRouter.patch('/:gameId/join', async (c) => {
 /**
  * UPDATE - Update game status
  * PATCH /games/:gameId
- * Body: { status?: 'waiting' | 'playing' | 'finished', winnerId?: string }
+ * Body: UpdateGameBody
  */
 gamesRouter.patch('/:gameId', async (c) => {
   const gameId = c.req.param('gameId')
@@ -192,10 +203,12 @@ gamesRouter.patch('/:gameId', async (c) => {
   const { status, winnerId } = body
 
   try {
-    const db = drizzle(c.env.DB)
-    const result = await db.select().from(game).where(eq(game.id, gameId))
+    const db = getDB(c.env)
+    const existingGame = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    if (result.length === 0) {
+    if (!existingGame) {
       return c.json(createErrorResponse(ErrorCode.GAME_NOT_FOUND), 404)
     }
 
@@ -213,9 +226,11 @@ gamesRouter.patch('/:gameId', async (c) => {
 
     await db.update(game).set(updateData).where(eq(game.id, gameId))
 
-    const updatedGame = await db.select().from(game).where(eq(game.id, gameId))
+    const updatedGame = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    return c.json(updatedGame[0])
+    return c.json(createSuccessResponse(SuccessCode.GAME_UPDATED, updatedGame))
   } catch (error) {
     console.error('Error updating game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -230,16 +245,22 @@ gamesRouter.delete('/:gameId', async (c) => {
   const gameId = c.req.param('gameId')
 
   try {
-    const db = drizzle(c.env.DB)
-    const result = await db.select().from(game).where(eq(game.id, gameId))
+    const db = getDB(c.env)
+    const existingGame = await db.query.game.findFirst({
+      where: eq(game.id, gameId),
+    })
 
-    if (result.length === 0) {
+    if (!existingGame) {
       return c.json(createErrorResponse(ErrorCode.GAME_NOT_FOUND), 404)
     }
 
     await db.delete(game).where(eq(game.id, gameId))
 
-    return c.json({ message: 'Game deleted successfully' })
+    return c.json(
+      createSuccessResponse(SuccessCode.GAME_DELETED, {
+        message: 'Game deleted successfully',
+      }),
+    )
   } catch (error) {
     console.error('Error deleting game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)

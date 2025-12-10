@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./*": "./src/*.ts"
+    "./games": "./src/games.ts",
+    "./messages": "./src/messages.ts",
+    "./apiMessage": "./src/apiMessage/index.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

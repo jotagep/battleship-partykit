@@ -8,7 +8,9 @@
     "build": "wrangler deploy --dry-run src/index.ts",
     "lint": "eslint . --ext ts --max-warnings 0",
     "check-types": "tsc --noEmit",
+    "drizzle": "drizzle-kit",
     "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
