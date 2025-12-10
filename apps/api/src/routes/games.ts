@@ -5,7 +5,7 @@ import {
   SuccessCode,
 } from '@repo/shared/apiMessage'
 import { CreateGameBody, JoinGameBody, UpdateGameBody } from '@repo/shared/games'
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq, not } from 'drizzle-orm'
 import { Hono } from 'hono'
 
 import { game } from '../db/schema'
@@ -60,14 +60,14 @@ gamesRouter.post('/', async (c) => {
 })
 
 /**
- * READ - Get all public waiting games
- * GET /games/public
+ * READ - Get all games not finished
+ * GET /games/active
  */
-gamesRouter.get('/public', async (c) => {
+gamesRouter.get('/active', async (c) => {
   try {
     const db = getDB(c.env)
     const results = await db.query.game.findMany({
-      where: and(eq(game.status, 'waiting'), isNull(game.accessCode)),
+      where: not(eq(game.status, 'finished')),
     })
 
     return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, results))

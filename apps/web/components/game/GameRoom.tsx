@@ -15,10 +15,11 @@ function formatMessage(data: MessageEvent['data']): string {
 
 interface GameRoomProps {
   roomId: string
+  roomName: string
   onLeave: () => void
 }
 
-export function GameRoom({ roomId, onLeave }: GameRoomProps) {
+export function GameRoom({ roomId, roomName, onLeave }: GameRoomProps) {
   const { data: session } = authClient.useSession()
   const { host, status, log, message, setMessage, setStatus, appendLog, resetLog } =
     useGameRoomStore()
@@ -70,11 +71,7 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
   })
 
   useEffect(() => {
-    setStatus('connecting')
-    resetLog({
-      kind: 'system',
-      text: `Connecting to ${endpoint}`,
-    })
+    resetLog()
   }, [endpoint, resetLog, setStatus])
 
   const canSend = socket?.readyState === WebSocket.OPEN && !!session
@@ -94,7 +91,7 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
         <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
           <div>
             <p className="text-xs font-spacemono text-neon-cyan/70 uppercase tracking-widest mb-1">
-              Mission: {roomId}
+              <b>Mission:</b> {roomName}
             </p>
             <h1 className="text-3xl md:text-4xl font-orbitron font-bold tracking-wider bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
               BATTLESHIP<span className="text-neon-cyan">.CMD</span>
