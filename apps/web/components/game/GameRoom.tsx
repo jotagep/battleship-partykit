@@ -1,16 +1,11 @@
 'use client'
 
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
-import { isBroadcastMessage, isWelcomeMessage } from '@repo/shared/messages'
+import { type FormEvent, useEffect, useMemo } from 'react'
+import { isChatMessage, isInfoMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
 import { authClient } from '@/lib/auth'
-
-type LogEntry = {
-  id: string
-  text: string
-  kind: 'system' | 'local' | 'remote'
-}
+import { type LogEntry, useGameRoomStore } from '@/lib/stores/game-room-store'
 
 function formatMessage(data: MessageEvent['data']): string {
   if (typeof data === 'string') return data
@@ -24,11 +19,9 @@ interface GameRoomProps {
 }
 
 export function GameRoom({ roomId, onLeave }: GameRoomProps) {
-  const [host] = useState('localhost:8787')
-  const [message, setMessage] = useState('')
-  const [status, setStatus] = useState('connecting')
-  const [log, setLog] = useState<LogEntry[]>([])
   const { data: session } = authClient.useSession()
+  const { host, status, log, message, setMessage, setStatus, appendLog, resetLog } =
+    useGameRoomStore()
 
   const endpoint = useMemo(
     () => `${host.replace(/^https?:\/\//, '')}/parties/battleship-party/${roomId}`,
@@ -41,62 +34,48 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     room: roomId,
     onOpen() {
       setStatus('connected')
-      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'system', text: 'Connected' }])
+      appendLog({ kind: 'system', text: 'Connected' })
     },
     onClose(evt) {
       setStatus('closed')
-      setLog((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          kind: 'system',
-          text: `Closed (${evt.code})`,
-        },
-      ])
+      appendLog({ kind: 'system', text: `Closed (${evt.code})` })
     },
     onError() {
       setStatus('error')
-      setLog((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          kind: 'system',
-          text: 'Socket error',
-        },
-      ])
+      appendLog({ kind: 'system', text: 'Socket error' })
     },
     onMessage(evt) {
       let text = formatMessage(evt.data)
       let kind: LogEntry['kind'] = 'remote'
+      let from: string | undefined = undefined
+
       try {
         const parsed: unknown = JSON.parse(text)
 
-        if (isWelcomeMessage(parsed)) {
-          text = `Welcome! Connected as ${session?.user.name} to room ${parsed.room}`
+        if (isInfoMessage(parsed)) {
           kind = 'system'
-        } else if (isBroadcastMessage(parsed)) {
-          kind = parsed.from === 'system' ? 'system' : 'remote'
-          text = `${parsed.from === 'system' ? '' : `${parsed.from}: `}${parsed.message}`
+          text = `${parsed.message}`
+        } else if (isChatMessage(parsed)) {
+          kind = 'remote'
+          from = parsed.from
+          text = `${parsed.message}`
         } else if (typeof parsed === 'object' && parsed !== null && 'type' in parsed) {
           text = JSON.stringify(parsed)
         }
       } catch (_err: unknown) {
         console.error('Error parsing message', _err)
       }
-      setLog((prev) => [...prev, { id: crypto.randomUUID(), kind, text }])
+      appendLog({ kind, text, from })
     },
   })
 
   useEffect(() => {
     setStatus('connecting')
-    setLog([
-      {
-        id: crypto.randomUUID(),
-        kind: 'system',
-        text: `Connecting to ${endpoint}`,
-      },
-    ])
-  }, [endpoint])
+    resetLog({
+      kind: 'system',
+      text: `Connecting to ${endpoint}`,
+    })
+  }, [endpoint, resetLog, setStatus])
 
   const canSend = socket?.readyState === WebSocket.OPEN && !!session
 
@@ -105,7 +84,7 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
     const text = message.trim()
     if (!text || !socket) return
     socket.send(text)
-    setLog((prev) => [...prev, { id: crypto.randomUUID(), kind: 'local', text }])
+    appendLog({ kind: 'local', text })
     setMessage('')
   }
 
@@ -180,7 +159,10 @@ export function GameRoom({ roomId, onLeave }: GameRoomProps) {
                   <span className="opacity-50 select-none">
                     {entry.kind === 'system' ? '>' : entry.kind === 'local' ? '>>' : '<<'}
                   </span>
-                  <span>{entry.text}</span>
+                  <span>
+                    {entry.from && <b>{entry.from}: </b>}
+                    {entry.text}
+                  </span>
                 </div>
               ))}
               {log.length === 0 && (

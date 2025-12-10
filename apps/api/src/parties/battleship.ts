@@ -1,10 +1,8 @@
-import { BroadcastMessage, WelcomeMessage } from '@repo/shared/messages'
-import { eq } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
+import { ChatMessage, InfoMessage } from '@repo/shared/messages'
 import { type Connection, type ConnectionContext, Server, type WSMessage } from 'partyserver'
 
 import { auth } from '../auth'
-import { type User, user as userTable } from '../db/schema'
+import { type User } from '../db/schema'
 import type { BindingsEnv } from '../types/env'
 
 const decoder = new TextDecoder()
@@ -32,16 +30,16 @@ export class Battleship extends Server<BindingsEnv> {
     const user: User = response.user as User
     this.users[connection.id] = user
 
-    const welcomeMessage: WelcomeMessage = {
-      type: 'welcome',
+    const welcomeMessage: InfoMessage = {
+      type: 'info',
       room: this.name,
+      message: `Welcome ${user.name ?? connection.id} to the battle!`,
     }
     connection.send(JSON.stringify(welcomeMessage))
 
-    const broadcastMessage: BroadcastMessage = {
-      type: 'broadcast',
+    const broadcastMessage: InfoMessage = {
+      type: 'info',
       room: this.name,
-      from: 'system',
       message: `${user.name ?? connection.id} has joined the battle`,
     }
     this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
@@ -51,8 +49,8 @@ export class Battleship extends Server<BindingsEnv> {
     const text = toText(message)
     this.messageHistory.push(text)
 
-    const broadcastMessage: BroadcastMessage = {
-      type: 'broadcast',
+    const broadcastMessage: ChatMessage = {
+      type: 'chat',
       room: this.name,
       from: this.users[connection.id]?.name ?? connection.id,
       message: text,

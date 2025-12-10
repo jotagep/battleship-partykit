@@ -1,7 +1,6 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 
 import { Login } from '@/components/lobby/Login'
 import { Loading } from '@/components/ui/Loading'

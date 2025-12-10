@@ -4,8 +4,8 @@
  * Message type constants
  */
 export const MessageType = {
-  WELCOME: 'welcome',
-  BROADCAST: 'broadcast',
+  INFO: 'info',
+  CHAT: 'chat',
 } as const
 
 /**
@@ -25,44 +25,44 @@ export interface BaseMessage {
 /**
  * Welcome message sent from server when a client connects
  */
-export interface WelcomeMessage extends BaseMessage {
-  type: typeof MessageType.WELCOME
+export interface InfoMessage extends BaseMessage {
+  type: typeof MessageType.INFO
 }
 
 /**
  * Broadcast message sent from server to all clients
  */
-export interface BroadcastMessage extends BaseMessage {
-  type: typeof MessageType.BROADCAST
+export interface ChatMessage extends BaseMessage {
+  type: typeof MessageType.CHAT
   from: string
 }
 
 /**
  * All possible server-to-client messages
  */
-export type ServerMessage = WelcomeMessage | BroadcastMessage
+export type ServerMessage = InfoMessage | ChatMessage
 
 /**
- * Type guard to check if a message is a WelcomeMessage
+ * Type guard to check if a message is an InfoMessage
  */
-export function isWelcomeMessage(message: unknown): message is WelcomeMessage {
+export function isInfoMessage(message: unknown): message is InfoMessage {
   return (
     typeof message === 'object' &&
     message !== null &&
     'type' in message &&
-    message.type === MessageType.WELCOME
+    message.type === MessageType.INFO
   )
 }
 
 /**
- * Type guard to check if a message is a BroadcastMessage
+ * Type guard to check if a message is a  ChatMessage
  */
-export function isBroadcastMessage(message: unknown): message is BroadcastMessage {
+export function isChatMessage(message: unknown): message is ChatMessage {
   return (
     typeof message === 'object' &&
     message !== null &&
     'type' in message &&
-    message.type === MessageType.BROADCAST &&
+    message.type === MessageType.CHAT &&
     'from' in message
   )
 }
