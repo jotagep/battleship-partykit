@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { partyserverMiddleware } from 'hono-party'
 
 import { Battleship } from './parties/battleship'
+import { gamesRouter } from './routes/games'
 import { BindingsEnv } from './types/env'
 import { auth } from './auth'
 
@@ -20,25 +21,8 @@ app.use(
   }),
 )
 
-app.get('/', (c) =>
-  c.json({
-    ok: true,
-    partiesEndpoint: '/parties/battleship/:roomName',
-  }),
-)
-
-app.get('/rooms/:roomName', (c) => {
-  const roomName = c.req.param('roomName')
-  const url = new URL(c.req.url)
-  const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-  const partyPath = `/parties/battleship/${roomName}`
-
-  return c.json({
-    room: roomName,
-    websocket: `${wsProtocol}//${url.host}${partyPath}`,
-    http: `${url.protocol}//${url.host}${partyPath}`,
-  })
-})
+// Games routes
+app.route('/games', gamesRouter)
 
 // Better Auth endpoints (Google OAuth etc.)
 app.on(['GET', 'POST', 'OPTIONS'], '/auth/*', (c) => auth(c.env).handler(c.req.raw))
