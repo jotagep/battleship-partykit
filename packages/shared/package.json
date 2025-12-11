@@ -5,6 +5,7 @@
   "exports": {
     "./games": "./src/games.ts",
     "./messages": "./src/messages.ts",
+    "./roomError": "./src/roomError.ts",
     "./apiMessage": "./src/apiMessage/index.ts"
   },
   "scripts": {

@@ -9,7 +9,6 @@ export type GameStatus = 'waiting' | 'playing' | 'finished'
  * Create game request body
  */
 export interface CreateGameBody {
-  player1Id: string
   name: string
   accessCode?: string
 }
@@ -18,7 +17,6 @@ export interface CreateGameBody {
  * Join game request body
  */
 export interface JoinGameBody {
-  player2Id: string
   accessCode?: string
 }
 
@@ -43,4 +41,8 @@ export interface Game {
   accessCode: string | null
   createdAt: Date
   updatedAt: Date
+}
+
+export interface GameActive extends Omit<Game, 'accessCode'> {
+  hasPassword: boolean
 }

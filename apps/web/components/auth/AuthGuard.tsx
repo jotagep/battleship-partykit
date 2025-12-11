@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react'
 
-import { Login } from '@/components/lobby/Login'
+import { Login } from '@/components/auth/Login'
 import { Loading } from '@/components/ui/Loading'
 
 import { authClient } from '@/lib/auth'

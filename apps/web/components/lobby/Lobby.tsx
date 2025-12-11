@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { LobbyCreateGameForm } from '@/components/lobby/LobbyCreateGameForm'
 import { LobbyHeader } from '@/components/lobby/LobbyHeader'
+import { LobbyJoinGameForm } from '@/components/lobby/LobbyJoinGameForm'
 import { LobbyRowGame } from '@/components/lobby/LobbyRowGame'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
@@ -18,13 +20,57 @@ interface LobbyProps {
 
 export function Lobby({ onJoinRoom }: LobbyProps) {
   const { data: session } = authClient.useSession()
-  const { games, isLoading, error, fetchGames } = useLobbyStore()
+  const { games, isLoading, isJoining, error, fetchGames, joinGame } = useLobbyStore()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isJoinOpen, setIsJoinOpen] = useState(false)
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
+
+  const selectedGameName = games.find((game) => game.id === selectedGameId)?.name || ''
 
   useEffect(() => {
-    console.log('Fetching games in Lobby useEffect')
     void fetchGames()
   }, [fetchGames])
+
+  const handleJoinGame = useCallback(
+    async (gameId: string, gameName: string) => {
+      try {
+        await joinGame(gameId)
+        onJoinRoom(gameName)
+      } catch (error) {
+        console.error('Failed to join game:', error)
+      }
+    },
+    [joinGame, onJoinRoom],
+  )
+
+  const handleEnterGame = useCallback(
+    async (gameName: string) => {
+      onJoinRoom(gameName)
+    },
+    [onJoinRoom],
+  )
+
+  const handleJoinWithPassword = useCallback(
+    async (accessCode: string) => {
+      if (!selectedGameId) return
+
+      try {
+        await joinGame(selectedGameId, accessCode)
+        onJoinRoom(selectedGameName)
+      } catch (_e) {
+        toast.error('Unable to join mission. Please check the access code and try again.')
+      } finally {
+        setIsJoinOpen(false)
+        setSelectedGameId(null)
+      }
+    },
+    [joinGame, onJoinRoom, selectedGameId, selectedGameName],
+  )
+
+  const handleRequestPassword = useCallback((gameId: string) => {
+    setSelectedGameId(gameId)
+    setIsJoinOpen(true)
+  }, [])
 
   const renderRows = () => {
     if (isLoading) {
@@ -45,7 +91,16 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
       )
     }
 
-    return games.map((game) => <LobbyRowGame key={game.id} game={game} onJoin={onJoinRoom} />)
+    return games.map((game) => (
+      <LobbyRowGame
+        key={game.id}
+        game={game}
+        userId={session?.user.id}
+        onJoin={handleJoinGame}
+        onEnter={handleEnterGame}
+        onRequestPassword={handleRequestPassword}
+      />
+    ))
   }
 
   return (
@@ -59,6 +114,24 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
         />
       </Modal>
 
+      <Modal
+        isOpen={isJoinOpen}
+        onClose={() => {
+          setIsJoinOpen(false)
+          setSelectedGameId(null)
+        }}
+        title="Access Code Required"
+      >
+        <LobbyJoinGameForm
+          onJoin={handleJoinWithPassword}
+          onCancel={() => {
+            setIsJoinOpen(false)
+            setSelectedGameId(null)
+          }}
+          isLoading={isJoining}
+        />
+      </Modal>
+
       <Card>
         <CardHeader>
           <CardTitle>ACTIVE MISSIONS</CardTitle>
@@ -67,16 +140,17 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
               Refresh
             </TacticalButton>
             <TacticalButton variant="secondary" onClick={() => setIsCreateOpen(true)}>
-              New Operation
+              New Mission
             </TacticalButton>
           </div>
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="grid grid-cols-4 gap-4 p-4 border-b border-slate-800 bg-slate-950/50 text-xs font-spacemono text-slate-400 uppercase tracking-wider">
-            <div>Mission</div>
+          <div className="grid grid-cols-5 gap-4 p-4 border-b border-slate-800 bg-slate-950/50 text-xs font-spacemono text-slate-400 uppercase tracking-wider">
+            <div>Mission ID</div>
             <div className="text-center">Players</div>
             <div className="text-center">Status</div>
+            <div className="text-center">Auth</div>
             <div className="text-right">Action</div>
           </div>
 

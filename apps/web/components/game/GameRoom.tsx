@@ -1,8 +1,10 @@
 'use client'
 
-import { type FormEvent, useEffect, useMemo } from 'react'
-import { isChatMessage, isInfoMessage } from '@repo/shared/messages'
+import { type FormEvent, useEffect } from 'react'
+import { type GameActive } from '@repo/shared/games'
+import { isChatMessage, isInfoMessage, RoomCloseCode } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
+import { toast } from 'sonner'
 
 import { authClient } from '@/lib/auth'
 import { type LogEntry, useGameRoomStore } from '@/lib/stores/game-room-store'
@@ -14,32 +16,40 @@ function formatMessage(data: MessageEvent['data']): string {
 }
 
 interface GameRoomProps {
-  roomId: string
-  roomName: string
+  game: GameActive
   onLeave: () => void
 }
 
-export function GameRoom({ roomId, roomName, onLeave }: GameRoomProps) {
+export function GameRoom({ game, onLeave }: GameRoomProps) {
   const { data: session } = authClient.useSession()
   const { host, status, log, message, setMessage, setStatus, appendLog, resetLog } =
     useGameRoomStore()
 
-  const endpoint = useMemo(
-    () => `${host.replace(/^https?:\/\//, '')}/parties/battleship-party/${roomId}`,
-    [host, roomId],
-  )
-
   const socket = usePartySocket({
     host,
     party: 'battleship-party',
-    room: roomId,
+    room: game.id,
     onOpen() {
       setStatus('connected')
       appendLog({ kind: 'system', text: 'Connected' })
     },
     onClose(evt) {
       setStatus('closed')
-      appendLog({ kind: 'system', text: `Closed (${evt.code})` })
+      switch (evt.code) {
+        case RoomCloseCode.NORMAL:
+          break
+        case RoomCloseCode.UNAUTHORIZED:
+          toast.error('Unauthorized')
+          break
+        case RoomCloseCode.ROOM_NOT_FOUND:
+          toast.error('Game not found')
+          break
+
+        default:
+          break
+      }
+
+      onLeave()
     },
     onError() {
       setStatus('error')
@@ -72,9 +82,9 @@ export function GameRoom({ roomId, roomName, onLeave }: GameRoomProps) {
 
   useEffect(() => {
     resetLog()
-  }, [endpoint, resetLog, setStatus])
+  }, [resetLog])
 
-  const canSend = socket?.readyState === WebSocket.OPEN && !!session
+  const canSend = socket?.readyState === socket.OPEN && !!session
 
   const sendMessage = (e: FormEvent) => {
     e.preventDefault()
@@ -91,7 +101,7 @@ export function GameRoom({ roomId, roomName, onLeave }: GameRoomProps) {
         <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
           <div>
             <p className="text-xs font-spacemono text-neon-cyan/70 uppercase tracking-widest mb-1">
-              <b>Mission:</b> {roomName}
+              <b>Mission:</b> {game.name}
             </p>
             <h1 className="text-3xl md:text-4xl font-orbitron font-bold tracking-wider bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
               BATTLESHIP<span className="text-neon-cyan">.CMD</span>

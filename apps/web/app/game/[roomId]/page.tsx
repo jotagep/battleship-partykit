@@ -10,10 +10,12 @@ import { useLobbyStore } from '@/lib/stores/lobby-store'
 
 export default function GamePage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId: roomName } = use(params)
+
   const router = useRouter()
   const { games, isLoading, fetchGames } = useLobbyStore()
 
-  const roomId = games.find((g) => g.name === roomName)?.id
+  const game = games.find((g) => g.name === roomName)
+  const roomId = game?.id
 
   useEffect(() => {
     if (!roomId) {
@@ -25,5 +27,5 @@ export default function GamePage({ params }: { params: Promise<{ roomId: string 
     return <Loading text="Loading mission…" />
   }
 
-  return <GameRoom roomId={roomId} roomName={roomName} onLeave={() => router.push('/')} />
+  return <GameRoom game={game} onLeave={() => router.push('/')} />
 }

@@ -1,8 +1,10 @@
-import { ChatMessage, InfoMessage } from '@repo/shared/messages'
+import { ChatMessage, InfoMessage, RoomCloseCode } from '@repo/shared/messages'
+import { eq } from 'drizzle-orm'
 import { type Connection, type ConnectionContext, Server, type WSMessage } from 'partyserver'
 
 import { auth } from '../auth'
-import { type User } from '../db/schema'
+import { Game, game, type User } from '../db/schema'
+import { getDB } from '../db/utils'
 import type { BindingsEnv } from '../types/env'
 
 const decoder = new TextDecoder()
@@ -14,6 +16,7 @@ function toText(message: WSMessage): string {
 }
 
 export class Battleship extends Server<BindingsEnv> {
+  game: Game | null = null
   messageHistory: string[] = []
   users: Record<string, User> = {}
 
@@ -23,7 +26,26 @@ export class Battleship extends Server<BindingsEnv> {
     const response = await auth(this.env).api.getSession({ headers: { cookie } })
 
     if (!response || !response.session || !response.user) {
-      connection.close()
+      connection.close(RoomCloseCode.UNAUTHORIZED, 'Unauthorized')
+      return
+    }
+
+    // Check game access here if needed (e.g., access codes)
+    const db = getDB(this.env)
+
+    if (!this.game) {
+      const gameData = await db.query.game.findFirst({
+        where: eq(game.id, this.name),
+      })
+      if (!gameData) {
+        connection.close(RoomCloseCode.ROOM_NOT_FOUND, 'Game not found')
+        return
+      }
+      this.game = gameData
+    }
+
+    if (this.game.player1Id !== response.user.id && this.game.player2Id !== response.user.id) {
+      connection.close(RoomCloseCode.UNAUTHORIZED, 'Unauthorized')
       return
     }
 
@@ -56,6 +78,19 @@ export class Battleship extends Server<BindingsEnv> {
       message: text,
     }
     this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
+  }
+
+  onClose(connection: Connection): void {
+    const user = this.users[connection.id]
+
+    if (user) {
+      const broadcastMessage: InfoMessage = {
+        type: 'info',
+        room: this.name,
+        message: `${user?.name} has left the battle`,
+      }
+      this.broadcast(JSON.stringify(broadcastMessage))
+    }
   }
 
   async onRequest(_request: Request): Promise<Response> {

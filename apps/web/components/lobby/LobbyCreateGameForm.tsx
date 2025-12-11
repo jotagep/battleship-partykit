@@ -75,7 +75,6 @@ export function LobbyCreateGameForm({ onCancel, onSuccess }: LobbyCreateGameForm
       <div className="space-y-2">
         <label className="text-sm font-spacemono text-slate-300">Access Code (optional)</label>
         <Input
-          type="password"
           value={accessCode}
           onChange={(e) => setAccessCode(e.target.value)}
           placeholder="4 to 8 digits"

@@ -5,16 +5,19 @@ import {
   SuccessCode,
 } from '@repo/shared/apiMessage'
 import { CreateGameBody, JoinGameBody, UpdateGameBody } from '@repo/shared/games'
-import { eq, not } from 'drizzle-orm'
+import { desc, eq, not } from 'drizzle-orm'
 import { Hono } from 'hono'
 
 import { game } from '../db/schema'
 import { getDB } from '../db/utils'
-import { BindingsEnv } from '../types/env'
+import { authMiddleware } from '../middleware/auth.middleware'
+import { BindingsEnv, VariablesEnv } from '../types/env'
 
-type GamesEnv = { Bindings: BindingsEnv }
+type GamesEnv = { Bindings: BindingsEnv; Variables: VariablesEnv }
 
 const gamesRouter = new Hono<GamesEnv>()
+
+gamesRouter.use('*', authMiddleware)
 
 /**
  * CREATE - Create a new game
@@ -22,15 +25,10 @@ const gamesRouter = new Hono<GamesEnv>()
  * Body: CreateGameBody
  */
 gamesRouter.post('/', async (c) => {
+  const user = c.get('USER')
+  const player1Id = user.id
   const body: CreateGameBody = await c.req.json()
-  const { player1Id, accessCode, name } = body
-
-  if (!player1Id) {
-    return c.json(
-      createErrorResponse(ErrorCode.VALIDATION_MISSING_FIELD, 'player1Id is required'),
-      400,
-    )
-  }
+  const { accessCode, name } = body
 
   if (!name) {
     return c.json(createErrorResponse(ErrorCode.VALIDATION_MISSING_FIELD, 'name is required'), 400)
@@ -52,7 +50,9 @@ gamesRouter.post('/', async (c) => {
 
     await db.insert(game).values(newGame)
 
-    return c.json(createSuccessResponse(SuccessCode.GAME_CREATED, newGame), 201)
+    const createdGame = { ...newGame, accessCode: undefined, hasPassword: !!accessCode }
+
+    return c.json(createSuccessResponse(SuccessCode.GAME_CREATED, createdGame), 201)
   } catch (error) {
     console.error('Error creating game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -68,9 +68,15 @@ gamesRouter.get('/active', async (c) => {
     const db = getDB(c.env)
     const results = await db.query.game.findMany({
       where: not(eq(game.status, 'finished')),
+      orderBy: [desc(game.createdAt)],
     })
 
-    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, results))
+    const gamesWithoutAccessCode = results.map(({ accessCode, ...game }) => ({
+      hasPassword: !!accessCode,
+      ...game,
+    }))
+
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, gamesWithoutAccessCode))
   } catch (error) {
     console.error('Error fetching public games:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
@@ -135,16 +141,12 @@ gamesRouter.get('/user/:userId', async (c) => {
  * Body: JoinGameBody
  */
 gamesRouter.patch('/:gameId/join', async (c) => {
+  const user = c.get('USER')
+  const player2Id = user.id
+
   const gameId = c.req.param('gameId')
   const body: JoinGameBody = await c.req.json()
-  const { player2Id, accessCode } = body
-
-  if (!player2Id) {
-    return c.json(
-      createErrorResponse(ErrorCode.VALIDATION_MISSING_FIELD, 'player2Id is required'),
-      400,
-    )
-  }
+  const { accessCode } = body
 
   try {
     const db = getDB(c.env)

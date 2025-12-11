@@ -15,7 +15,7 @@ app.use(
   '*',
   cors({
     origin: 'http://localhost:3000', // tu frontend
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   }),

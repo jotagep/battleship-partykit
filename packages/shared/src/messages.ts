@@ -1,5 +1,13 @@
 // Message types for WebSocket communication between client and server
 
+export const RoomCloseCode: Record<string, number> = {
+  NORMAL: 1000,
+  INVALID_ACTION: 4000,
+  UNAUTHORIZED: 4001,
+  ROOM_FULL: 4002,
+  ROOM_NOT_FOUND: 4003,
+} as const
+
 /**
  * Message type constants
  */

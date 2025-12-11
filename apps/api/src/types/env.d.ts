@@ -1,3 +1,4 @@
+import { User } from '../db/schema'
 import type { Battleship } from '../parties/battleship'
 
 interface BindingsEnv {
@@ -10,4 +11,8 @@ interface BindingsEnv {
   GOOGLE_CLIENT_SECRET: string
 }
 
-export { BindingsEnv }
+interface VariablesEnv {
+  USER: User
+}
+
+export { BindingsEnv, VariablesEnv }
