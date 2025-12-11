@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev src/index.ts --local --env-file=.env",
-    "build": "wrangler deploy --dry-run src/index.ts",
+    "dev": "wrangler dev src/worker.ts --local --env-file=.env",
+    "build": "wrangler deploy --dry-run src/worker.ts",
     "lint": "eslint . --ext ts --max-warnings 0",
     "check-types": "tsc --noEmit",
     "drizzle": "drizzle-kit",

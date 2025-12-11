@@ -1,13 +1,18 @@
 'use client'
 
-import { type FormEvent, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { type GameActive } from '@repo/shared/games'
 import { isChatMessage, isInfoMessage, RoomCloseCode } from '@repo/shared/messages'
+import { ChevronDown, MessageSquare, X } from 'lucide-react'
 import { usePartySocket } from 'partysocket/react'
 import { toast } from 'sonner'
 
-import { authClient } from '@/lib/auth'
+import { type Ship } from '@/lib/game-logic'
 import { type LogEntry, useGameRoomStore } from '@/lib/stores/game-room-store'
+
+import { GameChat } from './GameChat'
+import { GameChatNotificationDot } from './GameChatNotificationDot'
+import { GamePreparationPhase } from './GamePreparationPhase'
 
 function formatMessage(data: MessageEvent['data']): string {
   if (typeof data === 'string') return data
@@ -21,9 +26,8 @@ interface GameRoomProps {
 }
 
 export function GameRoom({ game, onLeave }: GameRoomProps) {
-  const { data: session } = authClient.useSession()
-  const { host, status, log, message, setMessage, setStatus, appendLog, resetLog } =
-    useGameRoomStore()
+  const { host, status, setStatus, appendLog, resetLog } = useGameRoomStore()
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const socket = usePartySocket({
     host,
@@ -84,19 +88,14 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
     resetLog()
   }, [resetLog])
 
-  const canSend = socket?.readyState === socket.OPEN && !!session
-
-  const sendMessage = (e: FormEvent) => {
-    e.preventDefault()
-    const text = message.trim()
-    if (!text || !socket) return
-    socket.send(text)
-    appendLog({ kind: 'local', text })
-    setMessage('')
+  const handleDeploy = (ships: Ship[]) => {
+    console.log('Deploying ships', ships)
+    toast.success('Fleet deployed! Waiting for opponent...')
+    // socket.send(JSON.stringify({ type: 'deploy', ships }))
   }
 
   return (
-    <div className="w-full max-w-3xl z-10">
+    <div className="w-full max-w-6xl z-10 relative">
       <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 rounded-xl shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] overflow-hidden">
         <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
           <div>
@@ -140,61 +139,41 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
           </div>
         </div>
 
-        <div className="p-6 md:p-8 space-y-8">
-          {/* Command Interface */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-orbitron text-slate-300 tracking-wider">Command Log</h3>
-              <div className="h-px flex-1 bg-slate-800 ml-4"></div>
-            </div>
-
-            <div
-              className="rounded-lg border border-slate-800 bg-black/60 p-4 h-64 overflow-y-auto font-spacemono text-xs space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
-              aria-live="polite"
-            >
-              {log.map((entry) => (
-                <div
-                  key={entry.id}
-                  className={`flex gap-3 ${
-                    entry.kind === 'system'
-                      ? 'text-slate-500'
-                      : entry.kind === 'local'
-                        ? 'text-neon-cyan'
-                        : 'text-neon-lime'
-                  }`}
-                >
-                  <span className="opacity-50 select-none">
-                    {entry.kind === 'system' ? '>' : entry.kind === 'local' ? '>>' : '<<'}
-                  </span>
-                  <span>
-                    {entry.from && <b>{entry.from}: </b>}
-                    {entry.text}
-                  </span>
-                </div>
-              ))}
-              {log.length === 0 && (
-                <div className="text-slate-600 italic">Waiting for transmission...</div>
-              )}
-            </div>
-
-            <form className="flex gap-3" onSubmit={sendMessage}>
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Enter command..."
-                disabled={!canSend}
-                className="flex-1 px-4 py-3 rounded bg-slate-950/50 border border-slate-800 text-white font-spacemono text-sm placeholder-slate-600 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <button
-                type="submit"
-                disabled={!canSend || !message.trim()}
-                className="px-8 py-3 rounded bg-neon-cyan hover:bg-cyan-400 text-void font-orbitron font-bold text-sm tracking-wider transition-all hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                SEND
-              </button>
-            </form>
-          </div>
+        <div className="p-6 md:p-8">
+          <GamePreparationPhase onDeploy={handleDeploy} />
         </div>
+      </div>
+
+      {/* Floating Chat */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+        {isChatOpen && (
+          <div className="w-80 md:w-96 bg-slate-950/90 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-xl p-4 animate-in slide-in-from-bottom-10 fade-in duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-orbitron text-neon-cyan tracking-widest">
+                SECURE CHANNEL
+              </h3>
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <GameChat socket={socket} />
+          </div>
+        )}
+
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className={`relative h-14 w-14 rounded-full flex items-center justify-center transition-all shadow-lg hover:scale-105 active:scale-95 ${
+            isChatOpen
+              ? 'bg-slate-800 text-slate-400 border border-slate-700'
+              : 'bg-neon-cyan/10 border border-neon-cyan/50 text-neon-cyan hover:bg-neon-cyan/20 shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+          }`}
+        >
+          <GameChatNotificationDot isOpenChat={isChatOpen} />
+          {isChatOpen ? <ChevronDown className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+        </button>
       </div>
     </div>
   )

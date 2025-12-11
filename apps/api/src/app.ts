@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { partyserverMiddleware } from 'hono-party'
 
-import { Battleship } from './parties/battleship'
 import { gamesRouter } from './routes/games'
 import { BindingsEnv } from './types/env'
 import { auth } from './auth'
@@ -48,5 +47,4 @@ app.use(
   }),
 )
 
-export { Battleship }
 export default app
