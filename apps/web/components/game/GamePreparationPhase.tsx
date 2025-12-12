@@ -1,44 +1,43 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  BOARD_SIZE,
+  type Coordinate,
+  DEFAULT_SHIP_TEMPLATES,
+  type FleetPlacement,
+  type Orientation,
+  type ShipId,
+  type ShipPlacement,
+  validateFleetPlacement,
+} from '@repo/shared/battleship'
 import { toast } from 'sonner'
-
-import { type Ship } from '@/lib/game-logic'
 
 import { Grid } from './Grid'
 import { ShipCard } from './ShipCard'
 
-const AVAILABLE_SHIPS: Omit<Ship, 'position' | 'orientation' | 'hits'>[] = [
-  { id: 'carrier', name: 'Carrier', size: 5 },
-  { id: 'battleship', name: 'Battleship', size: 4 },
-  { id: 'destroyer', name: 'Destroyer', size: 3 },
-  { id: 'submarine', name: 'Submarine', size: 3 },
-  { id: 'patrol-boat', name: 'Patrol Boat', size: 2 },
-]
-
 interface GamePreparationPhaseProps {
-  onDeploy: (ships: Ship[]) => void
+  onDeploy: (fleet: FleetPlacement) => void
 }
 
 export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
-  const [placedShips, setPlacedShips] = useState<Ship[]>([])
-  const [selectedShipId, setSelectedShipId] = useState<string | null>(null)
-  const [orientation, setOrientation] = useState<'horizontal' | 'vertical'>('horizontal')
-  const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null)
+  const [placedShips, setPlacedShips] = useState<ShipPlacement[]>([])
+  const [selectedShipId, setSelectedShipId] = useState<ShipId | null>(null)
+  const [orientation, setOrientation] = useState<Orientation>('horizontal')
+  const [hoverPosition, setHoverPosition] = useState<Coordinate | null>(null)
 
-  const selectedShipTemplate = AVAILABLE_SHIPS.find((s) => s.id === selectedShipId)
+  const selectedShipTemplate = DEFAULT_SHIP_TEMPLATES.find((s) => s.id === selectedShipId)
 
-  const previewShip: Ship | null =
+  const previewShip: ShipPlacement | null =
     selectedShipTemplate && hoverPosition
       ? {
-          ...selectedShipTemplate,
+          id: selectedShipTemplate.id,
           position: hoverPosition,
           orientation,
-          hits: 0,
         }
       : null
 
-  const handleShipSelect = (id: string) => {
+  const handleShipSelect = (id: ShipId) => {
     if (placedShips.some((s) => s.id === id)) {
       // If already placed, remove it to re-place
       setPlacedShips((prev) => prev.filter((s) => s.id !== id))
@@ -49,52 +48,21 @@ export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
   const handleGridClick = (x: number, y: number) => {
     if (!selectedShipId || !selectedShipTemplate) return
 
-    const newShip: Ship = {
-      ...selectedShipTemplate,
+    const newShip: ShipPlacement = {
+      id: selectedShipId,
       position: { x, y },
       orientation,
-      hits: 0,
     }
 
-    // Validate placement
-    // Check boundaries
-    if (orientation === 'horizontal') {
-      if (x + newShip.size > 10) {
-        toast.error('Ship out of bounds')
-        return
-      }
-    } else {
-      if (y + newShip.size > 10) {
-        toast.error('Ship out of bounds')
-        return
-      }
-    }
-
-    // Check collisions
-    const isCollision = placedShips.some((existing) => {
-      if (!existing.position) return false
-      // Simple bounding box check
-      // Expand this logic if needed, but Grid.tsx also has logic.
-      // Let's reuse the logic if possible or duplicate for now as it's simple.
-      // Actually, let's just check if any cell overlaps.
-      for (let i = 0; i < newShip.size; i++) {
-        const cx = orientation === 'horizontal' ? x + i : x
-        const cy = orientation === 'horizontal' ? y : y + i
-
-        // Check against existing ship cells
-        for (let j = 0; j < existing.size; j++) {
-          const ex =
-            existing.orientation === 'horizontal' ? existing.position.x + j : existing.position.x
-          const ey =
-            existing.orientation === 'horizontal' ? existing.position.y : existing.position.y + j
-          if (cx === ex && cy === ey) return true
-        }
-      }
-      return false
+    const validation = validateFleetPlacement([...placedShips, newShip], {
+      boardSize: BOARD_SIZE,
+      requireDefaultFleet: false,
     })
 
-    if (isCollision) {
-      toast.error('Ship collision')
+    if (!validation.ok) {
+      if (validation.code === 'out_of_bounds') toast.error('Ship out of bounds')
+      else if (validation.code === 'overlap') toast.error('Ship collision')
+      else toast.error(validation.message)
       return
     }
 
@@ -118,7 +86,7 @@ export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const allShipsPlaced = placedShips.length === AVAILABLE_SHIPS.length
+  const allShipsPlaced = placedShips.length === DEFAULT_SHIP_TEMPLATES.length
 
   return (
     <div className="space-y-6">
@@ -134,7 +102,7 @@ export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
             <h3 className="text-lg font-orbitron text-slate-300">SHIP DOCK</h3>
           </div>
           <div className="space-y-3">
-            {AVAILABLE_SHIPS.map((ship) => {
+            {DEFAULT_SHIP_TEMPLATES.map((ship) => {
               const isPlaced = placedShips.some((s) => s.id === ship.id)
               const isSelected = selectedShipId === ship.id
               return (
@@ -173,7 +141,7 @@ export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
 
           <div className="flex justify-between items-center mt-6">
             <span className="font-spacemono text-slate-400 text-sm">
-              SHIPS PLACED: {placedShips.length}/{AVAILABLE_SHIPS.length}
+              SHIPS PLACED: {placedShips.length}/{DEFAULT_SHIP_TEMPLATES.length}
             </span>
             <button
               onClick={() => onDeploy(placedShips)}

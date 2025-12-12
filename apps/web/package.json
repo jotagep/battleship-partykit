@@ -11,7 +11,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@repo/shared": "*",
+    "@repo/shared": "workspace:*",
     "better-auth": "^1.4.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.560.0",
@@ -24,8 +24,8 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",

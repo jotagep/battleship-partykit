@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { type FleetPlacement } from '@repo/shared/battleship'
 import { type GameActive } from '@repo/shared/games'
 import { isChatMessage, isInfoMessage, RoomCloseCode } from '@repo/shared/messages'
 import { ChevronDown, MessageSquare, X } from 'lucide-react'
 import { usePartySocket } from 'partysocket/react'
 import { toast } from 'sonner'
 
-import { type Ship } from '@/lib/game-logic'
 import { type LogEntry, useGameRoomStore } from '@/lib/stores/game-room-store'
 
 import { GameChat } from './GameChat'
@@ -88,8 +88,8 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
     resetLog()
   }, [resetLog])
 
-  const handleDeploy = (ships: Ship[]) => {
-    console.log('Deploying ships', ships)
+  const handleDeploy = (fleet: FleetPlacement) => {
+    console.log('Deploying fleet', fleet)
     toast.success('Fleet deployed! Waiting for opponent...')
     // socket.send(JSON.stringify({ type: 'deploy', ships }))
   }

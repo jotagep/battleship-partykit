@@ -5,6 +5,7 @@
   "exports": {
     "./games": "./src/games.ts",
     "./messages": "./src/messages.ts",
+    "./battleship": "./src/battleship.ts",
     "./roomError": "./src/roomError.ts",
     "./apiMessage": "./src/apiMessage/index.ts"
   },
@@ -13,8 +14,8 @@
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
     "typescript": "5.9.2"
   }
