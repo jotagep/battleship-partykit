@@ -96,7 +96,13 @@ export type BattleshipServerMessage =
         player2: { name: string }
       }
     }
-  | { type: 'fireResult'; at: Coordinate; result: ShotResult; turn: 'player1' | 'player2' }
+  | {
+      type: 'fireResult'
+      at: Coordinate
+      result: ShotResult
+      turn: 'player1' | 'player2'
+      isGameOver?: boolean
+    }
   | { type: 'error'; message: string }
 
 /**

@@ -108,8 +108,14 @@ export function handleGameRoomMessage(evt: MessageEvent) {
           }
         }
 
-        if (parsed.turn) {
-          setTurn(parsed.turn)
+        // Update turn
+        setTurn(parsed.turn)
+
+        // Handle game over
+        if (parsed.isGameOver) {
+          const winner = isMyShot ? myRole : myRole === 'player1' ? 'player2' : 'player1'
+          setWinner(winner)
+          setGamePhase('finished')
         }
         break
       }

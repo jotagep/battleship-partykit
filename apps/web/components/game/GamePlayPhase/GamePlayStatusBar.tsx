@@ -26,7 +26,7 @@ export function GamePlayStatusBar({ myRole, isMyTurn }: GamePlayStatusBarProps) 
         )}
       >
         {isMyTurn && (
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[8px] border-l-neon-lime ml-0.5" />
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-8 border-l-neon-lime ml-0.5" />
         )}
         <div className={cn('flex flex-col', isMyTurn && 'pl-2')}>
           <span className="text-xs text-slate-400 uppercase tracking-widest">Player</span>
@@ -40,7 +40,6 @@ export function GamePlayStatusBar({ myRole, isMyTurn }: GamePlayStatusBarProps) 
           </span>
         </div>
       </div>
-
       <div className="flex items-center gap-2">
         {isMyTurn ? (
           <div className="flex items-center gap-2 px-4 py-2 bg-neon-lime/10 border border-neon-lime/50 rounded text-neon-lime animate-pulse">
@@ -54,7 +53,6 @@ export function GamePlayStatusBar({ myRole, isMyTurn }: GamePlayStatusBarProps) 
           </div>
         )}
       </div>
-
       <div
         className={cn(
           'flex items-center gap-4 text-right px-4 py-2 rounded-lg transition-all duration-500 relative overflow-hidden',
@@ -75,7 +73,7 @@ export function GamePlayStatusBar({ myRole, isMyTurn }: GamePlayStatusBarProps) 
           </span>
         </div>
         {!isMyTurn && (
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-red-500 mr-0.5" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-8 border-r-red-500 mr-0.5" />
         )}
       </div>
     </div>

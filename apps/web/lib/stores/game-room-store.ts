@@ -1,14 +1,11 @@
 'use client'
 
-import type { FleetPlacement } from '@repo/shared/battleship'
+import type { FleetPlacement, GamePhase } from '@repo/shared/battleship'
 import type { ShotRecord } from '@repo/shared/messages'
 import { create } from 'zustand'
 
 type GameRoomStatus = 'connecting' | 'connected' | 'closed' | 'error'
 
-type GamePhase = 'preparing' | 'playing' | 'finished'
-
-// Unified message types
 export type LogMessage = {
   id: string
   type: 'log'

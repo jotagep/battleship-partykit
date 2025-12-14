@@ -359,17 +359,23 @@ export class Battleship extends Server<BindingsEnv> {
       const { fleet: updatedFleet, result } = applyShotToFleet(opponent.fleet, msg.at)
       opponent.fleet = updatedFleet
 
-      // Send result to both players
+      // Check if game is over
+      const isGameOver = isFleetSunk(opponent.fleet)
+
+      // Switch turn
+      this.game.turn = opponentRole
+
+      // Send result to both players (includes new turn and game over flag)
       const resultMsg: BattleshipServerMessage = {
         type: 'fireResult',
         at: msg.at,
         result,
         turn: opponentRole,
+        isGameOver,
       }
       this.broadcast(JSON.stringify(resultMsg))
 
-      // Check if game is over
-      if (isFleetSunk(opponent.fleet)) {
+      if (isGameOver) {
         this.game.winner = playerRole
         this.game.phase = 'finished'
         const winMsg: InfoMessage = {
@@ -378,20 +384,7 @@ export class Battleship extends Server<BindingsEnv> {
         }
         this.broadcast(JSON.stringify(winMsg))
         this.broadcastState()
-        return
       }
-
-      // Switch turn
-      this.game.turn = opponentRole
-
-      const turnMsg: InfoMessage = {
-        type: 'info',
-        message: `${opponent.user.name ?? opponent.user.id}'s turn`,
-      }
-      this.broadcast(JSON.stringify(turnMsg))
-
-      // Broadcast updated state
-      this.broadcastState()
     }
   }
 
