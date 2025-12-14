@@ -378,6 +378,17 @@ export class Battleship extends Server<BindingsEnv> {
       if (isGameOver) {
         this.game.winner = playerRole
         this.game.phase = 'finished'
+
+        const db = getDB(this.env)
+        await db
+          .update(game)
+          .set({
+            status: 'finished',
+            winnerId: playerState.user.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(game.id, this.name))
+
         const winMsg: InfoMessage = {
           type: 'info',
           message: `${playerState.user.name ?? playerState.user.id} wins! All enemy ships destroyed!`,
