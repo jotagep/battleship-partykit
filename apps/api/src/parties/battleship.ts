@@ -1,9 +1,24 @@
-import { ChatMessage, InfoMessage, RoomCloseCode } from '@repo/shared/messages'
+import {
+  type Coordinate,
+  type FleetPlacement,
+  type FleetState,
+  type GamePhase,
+  toInitialFleetState,
+  validateFleetPlacement,
+} from '@repo/shared/battleship'
+import {
+  type BattleshipClientMessage,
+  type BattleshipServerMessage,
+  type ChatMessage,
+  type InfoMessage,
+  isClientMessage,
+  RoomCloseCode,
+} from '@repo/shared/messages'
 import { eq } from 'drizzle-orm'
 import { type Connection, type ConnectionContext, Server, type WSMessage } from 'partyserver'
 
 import { auth } from '../auth'
-import { Game, game, type User } from '../db/schema'
+import { game, type User } from '../db/schema'
 import { getDB } from '../db/utils'
 import type { BindingsEnv } from '../types/env'
 
@@ -14,13 +29,65 @@ function toText(message: WSMessage): string {
   if (message instanceof ArrayBuffer) return decoder.decode(message)
   return decoder.decode(message.buffer)
 }
+interface PlayerState {
+  user: User
+  fleet?: FleetState
+  shotsFired?: Coordinate[]
+}
+
+interface ConnectionState {
+  user: User
+  role: 'player1' | 'player2'
+}
+
+interface GameState {
+  phase: GamePhase
+  turn: 'player1' | 'player2'
+  players: Partial<Record<'player1' | 'player2', PlayerState>>
+}
 
 export class Battleship extends Server<BindingsEnv> {
-  game: Game | null = null
   messageHistory: string[] = []
-  users: Record<string, User> = {}
+  game: GameState = {
+    phase: 'preparing',
+    turn: 'player1',
+    players: {},
+  }
 
-  async onConnect(connection: Connection, ctx: ConnectionContext): Promise<void> {
+  private fleetStateToPlacement(fleet?: FleetState): FleetPlacement | undefined {
+    if (!fleet) return undefined
+    return fleet.map(({ hits: _hits, ...placement }) => placement)
+  }
+
+  private sendStateToConnection(connection: Connection<ConnectionState>): void {
+    const player = this.getPlayerByConnection(connection)
+    if (!player) return
+
+    const stateMessage: BattleshipServerMessage = {
+      type: 'state',
+      you: player.role,
+      phase: this.game.phase,
+      fleet: this.fleetStateToPlacement(player.state.fleet),
+    }
+    connection.send(JSON.stringify(stateMessage))
+  }
+
+  private broadcastState(): void {
+    for (const conn of this.getConnections<ConnectionState>()) {
+      this.sendStateToConnection(conn)
+    }
+  }
+
+  onStart(): void | Promise<void> {
+    // void this.sql`
+    //   CREATE TABLE IF NOT EXISTS game (
+    //     id TEXT PRIMARY KEY,
+    //     snapshot TEXT NOT NULL
+    //   )
+    // `
+  }
+
+  async onConnect(connection: Connection<ConnectionState>, ctx: ConnectionContext): Promise<void> {
     const cookie = ctx.request.headers.get('cookie') ?? ''
 
     const response = await auth(this.env).api.getSession({ headers: { cookie } })
@@ -33,70 +100,178 @@ export class Battleship extends Server<BindingsEnv> {
     // Check game access here if needed (e.g., access codes)
     const db = getDB(this.env)
 
-    if (!this.game) {
-      const gameData = await db.query.game.findFirst({
-        where: eq(game.id, this.name),
-      })
-      if (!gameData) {
-        connection.close(RoomCloseCode.ROOM_NOT_FOUND, 'Game not found')
-        return
-      }
-      this.game = gameData
+    const gameData = await db.query.game.findFirst({
+      where: eq(game.id, this.name),
+    })
+    if (!gameData) {
+      connection.close(RoomCloseCode.ROOM_NOT_FOUND, 'Game not found')
+      return
     }
 
-    if (this.game.player1Id !== response.user.id && this.game.player2Id !== response.user.id) {
+    if (gameData.player1Id !== response.user.id && gameData.player2Id !== response.user.id) {
       connection.close(RoomCloseCode.UNAUTHORIZED, 'Unauthorized')
       return
     }
 
     const user: User = response.user as User
-    this.users[connection.id] = user
 
-    const welcomeMessage: InfoMessage = {
-      type: 'info',
-      room: this.name,
-      message: `Welcome ${user.name ?? connection.id} to the battle!`,
-    }
-    connection.send(JSON.stringify(welcomeMessage))
+    // Determine which player this connection belongs to
+    const playerRole = user.id === gameData.player1Id ? 'player1' : 'player2'
 
-    const broadcastMessage: InfoMessage = {
-      type: 'info',
-      room: this.name,
-      message: `${user.name ?? connection.id} has joined the battle`,
-    }
-    this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
-  }
+    connection.setState({ user, role: playerRole })
 
-  async onMessage(connection: Connection, message: WSMessage): Promise<void> {
-    const text = toText(message)
-    this.messageHistory.push(text)
+    // Check if player is reconnecting (already has state)
+    const existingPlayer = this.game.players[playerRole]
+    if (existingPlayer) {
+      const reconnectMessage: InfoMessage = {
+        type: 'info',
+        message: `${user.name ?? user.id} has reconnected to the battle`,
+      }
+      this.broadcast(JSON.stringify(reconnectMessage), [connection.id])
 
-    const broadcastMessage: ChatMessage = {
-      type: 'chat',
-      room: this.name,
-      from: this.users[connection.id]?.name ?? connection.id,
-      message: text,
-    }
-    this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
-  }
+      // Send current state back to the reconnecting player
+      this.sendStateToConnection(connection)
+    } else {
+      // New connection - initialize player state
+      this.game.players[playerRole] = {
+        user,
+        shotsFired: [],
+      }
 
-  onClose(connection: Connection): void {
-    const user = this.users[connection.id]
+      const welcomeMessage: InfoMessage = {
+        type: 'info',
+        message: `Welcome ${user.name ?? user.id} to the battle!`,
+      }
+      connection.send(JSON.stringify(welcomeMessage))
 
-    if (user) {
       const broadcastMessage: InfoMessage = {
         type: 'info',
-        room: this.name,
-        message: `${user?.name} has left the battle`,
+        message: `${user.name ?? user.id} has joined the battle`,
+      }
+      this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
+
+      // Send initial state
+      this.sendStateToConnection(connection)
+    }
+  }
+
+  async onMessage(connection: Connection<ConnectionState>, message: WSMessage): Promise<void> {
+    const text = toText(message)
+
+    try {
+      const parsed: unknown = JSON.parse(text)
+
+      if (!isClientMessage(parsed)) {
+        return
+      }
+
+      const player = this.getPlayerByConnection(connection)
+
+      // Handle all client messages with exhaustive switch
+      switch (parsed.type) {
+        case 'chat': {
+          this.messageHistory.push(parsed.message)
+          const broadcastMessage: ChatMessage = {
+            type: 'chat',
+            from: player?.state.user.name ?? connection.id,
+            message: parsed.message,
+          }
+          this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
+          break
+        }
+
+        case 'deploy':
+        case 'fire':
+          await this.handleBattleshipMessage(connection, parsed)
+          break
+
+        default: {
+          const _exhaustive: never = parsed
+          console.warn('Unhandled client message type:', _exhaustive)
+        }
+      }
+    } catch (_err: unknown) {
+      // Invalid JSON - ignore
+      return
+    }
+  }
+
+  private getPlayerByConnection(
+    connection: Connection<ConnectionState>,
+  ): { role: 'player1' | 'player2'; state: PlayerState } | null {
+    const connectionRole = connection.state?.role
+    if (!connectionRole) return null
+
+    const playerState = this.game.players[connectionRole]
+    if (playerState) {
+      return { role: connectionRole, state: playerState }
+    }
+    return null
+  }
+
+  private async handleBattleshipMessage(
+    connection: Connection<ConnectionState>,
+    msg: BattleshipClientMessage,
+  ): Promise<void> {
+    const player = this.getPlayerByConnection(connection)
+    if (!player) return
+
+    const { role: playerRole, state: playerState } = player
+
+    if (msg.type === 'deploy') {
+      const validation = validateFleetPlacement(msg.fleet)
+      if (!validation.ok) {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: `Invalid fleet: ${validation.message}`,
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Store the fleet
+      playerState.fleet = toInitialFleetState(msg.fleet)
+
+      // Broadcast that this player is ready
+      const readyMsg: InfoMessage = {
+        type: 'info',
+        message: `${playerState.user.name ?? playerState.user.id} has deployed their fleet`,
+      }
+      this.broadcast(JSON.stringify(readyMsg))
+
+      // Check if both players are ready
+      const bothReady = Object.values(this.game.players).every((p) => p?.fleet !== undefined)
+      if (bothReady) {
+        // Randomly determine who goes first
+        this.game.turn = Math.random() < 0.5 ? 'player1' : 'player2'
+
+        // Notify both players that the game has started
+        this.game.phase = 'playing'
+
+        const startPlayer = this.game.players[this.game.turn]
+        const startMsg: InfoMessage = {
+          type: 'info',
+          message: `Battle begins! ${startPlayer?.user.name ?? startPlayer?.user.id} goes first`,
+        }
+        this.broadcast(JSON.stringify(startMsg))
+
+        this.broadcastState()
+      }
+    } else if (msg.type === 'fire') {
+      // Handle fire message (future implementation)
+      console.log(`Player ${playerRole} fired at`, msg.at)
+    }
+  }
+
+  onClose(connection: Connection<ConnectionState>): void {
+    const player = this.getPlayerByConnection(connection)
+
+    if (player) {
+      const broadcastMessage: InfoMessage = {
+        type: 'info',
+        message: `${player.state.user.name ?? player.state.user.id} has left the battle`,
       }
       this.broadcast(JSON.stringify(broadcastMessage))
     }
-  }
-
-  async onRequest(_request: Request): Promise<Response> {
-    return Response.json({
-      room: this.name,
-      connections: [...this.getConnections()].length,
-    })
   }
 }

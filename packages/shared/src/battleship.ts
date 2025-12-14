@@ -1,5 +1,7 @@
 export const BOARD_SIZE = 10 as const
 
+export type GamePhase = 'preparing' | 'playing' | 'finished'
+
 export type Coordinate = { x: number; y: number }
 export type Orientation = 'horizontal' | 'vertical'
 
@@ -233,22 +235,4 @@ export function applyShotToFleet(
 
 export function isFleetSunk(fleet: FleetState): boolean {
   return fleet.every((s) => s.hits.length >= getShipSize(s.id))
-}
-
-export type BattleshipClientMessage =
-  | { type: 'deploy'; fleet: FleetPlacement }
-  | { type: 'fire'; at: Coordinate }
-
-export type BattleshipServerMessage =
-  | { type: 'state'; you: 'player1' | 'player2'; phase: 'preparing' | 'playing' | 'finished' }
-  | { type: 'fireResult'; at: Coordinate; result: ShotResult }
-  | { type: 'error'; message: string }
-
-export function isBattleshipClientMessage(value: unknown): value is BattleshipClientMessage {
-  if (typeof value !== 'object' || value === null || !('type' in value)) return false
-  const record = value as Record<string, unknown>
-  const t = record.type
-  if (t === 'deploy') return Array.isArray(record.fleet)
-  if (t === 'fire') return isCoordinate(record.at)
-  return false
 }

@@ -1,24 +1,49 @@
 'use client'
 
+import type { FleetPlacement } from '@repo/shared/battleship'
 import { create } from 'zustand'
 
 type GameRoomStatus = 'connecting' | 'connected' | 'closed' | 'error'
-export type LogKind = 'system' | 'local' | 'remote'
-export type LogEntry = {
+
+type GamePhase = 'preparing' | 'playing' | 'finished'
+
+// Unified message types
+export type LogMessage = {
   id: string
+  type: 'log'
   text: string
-  kind: LogKind
-  from?: string
+  kind: 'system' | 'game'
+  timestamp: number
 }
+
+export type ChatMessage = {
+  id: string
+  type: 'chat'
+  text: string
+  from: string
+  isLocal: boolean
+  timestamp: number
+}
+
+export type GameMessage = LogMessage | ChatMessage
 
 type GameRoomState = {
   host: string
   status: GameRoomStatus
-  log: LogEntry[]
+  messages: GameMessage[]
+  gamePhase: GamePhase
+  deployedFleet: FleetPlacement | null
+
   setHost: (host: string) => void
   setStatus: (status: GameRoomStatus) => void
-  appendLog: (entry: Omit<LogEntry, 'id'>) => void
-  resetLog: (entry?: Omit<LogEntry, 'id'>) => void
+  setGamePhase: (phase: GamePhase) => void
+  setDeployedFleet: (fleet: FleetPlacement | null) => void
+
+  addLog: (text: string, kind?: LogMessage['kind']) => void
+  addChatMessage: (text: string, from: string, isLocal?: boolean) => void
+  clearMessages: () => void
+
+  resetGame: () => void
 }
 
 const generateId = () =>
@@ -29,12 +54,37 @@ const generateId = () =>
 export const useGameRoomStore = create<GameRoomState>((set) => ({
   host: 'localhost:8787',
   status: 'connecting',
-  log: [],
+  messages: [],
+  gamePhase: 'preparing',
+  deployedFleet: null,
+
   setHost: (host) => set({ host }),
   setStatus: (status) => set({ status }),
-  appendLog: (entry) => set((state) => ({ log: [...state.log, { id: generateId(), ...entry }] })),
-  resetLog: (entry) =>
+  setGamePhase: (gamePhase) => set({ gamePhase }),
+  setDeployedFleet: (deployedFleet) => set({ deployedFleet }),
+
+  addLog: (text, kind = 'system') =>
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        { id: generateId(), type: 'log', text, kind, timestamp: Date.now() },
+      ],
+    })),
+
+  addChatMessage: (text, from, isLocal = false) =>
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        { id: generateId(), type: 'chat', text, from, isLocal, timestamp: Date.now() },
+      ],
+    })),
+
+  clearMessages: () => set({ messages: [] }),
+  resetGame: () =>
     set({
-      log: entry ? [{ id: generateId(), ...entry }] : [],
+      status: 'connecting',
+      gamePhase: 'preparing',
+      deployedFleet: null,
+      messages: [],
     }),
 }))

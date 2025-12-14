@@ -1,5 +1,13 @@
 // Message types for WebSocket communication between client and server
 
+import {
+  type Coordinate,
+  type FleetPlacement,
+  type GamePhase,
+  isCoordinate,
+  type ShotResult,
+} from './battleship'
+
 export const RoomCloseCode: Record<string, number> = {
   NORMAL: 1000,
   INVALID_ACTION: 4000,
@@ -9,56 +17,28 @@ export const RoomCloseCode: Record<string, number> = {
 } as const
 
 /**
- * Message type constants
- */
-export const MessageType = {
-  INFO: 'info',
-  CHAT: 'chat',
-} as const
-
-/**
- * Message type enum for type-safe message handling
- */
-export type MessageTypeEnum = (typeof MessageType)[keyof typeof MessageType]
-
-/**
- * Base message structure
- */
-export interface BaseMessage {
-  type: MessageTypeEnum
-  room: string
-  message?: string
-}
-
-/**
  * Welcome message sent from server when a client connects
  */
-export interface InfoMessage extends BaseMessage {
-  type: typeof MessageType.INFO
+export interface InfoMessage {
+  type: 'info'
+  message: string
 }
 
 /**
  * Broadcast message sent from server to all clients
  */
-export interface ChatMessage extends BaseMessage {
-  type: typeof MessageType.CHAT
+export interface ChatMessage {
+  type: 'chat'
   from: string
+  message: string
 }
-
-/**
- * All possible server-to-client messages
- */
-export type ServerMessage = InfoMessage | ChatMessage
 
 /**
  * Type guard to check if a message is an InfoMessage
  */
 export function isInfoMessage(message: unknown): message is InfoMessage {
   return (
-    typeof message === 'object' &&
-    message !== null &&
-    'type' in message &&
-    message.type === MessageType.INFO
+    typeof message === 'object' && message !== null && 'type' in message && message.type === 'info'
   )
 }
 
@@ -70,7 +50,84 @@ export function isChatMessage(message: unknown): message is ChatMessage {
     typeof message === 'object' &&
     message !== null &&
     'type' in message &&
-    message.type === MessageType.CHAT &&
+    message.type === 'chat' &&
     'from' in message
   )
+}
+
+// --- Game messages (client <-> server) ---
+
+/**
+ * Chat message sent from client to server
+ */
+export interface ChatClientMessage {
+  type: 'chat'
+  message: string
+}
+
+/**
+ * Battleship game messages sent from client to server
+ */
+export type BattleshipClientMessage =
+  | { type: 'deploy'; fleet: FleetPlacement }
+  | { type: 'fire'; at: Coordinate }
+
+/**
+ * Game state and result messages sent from server to client
+ */
+export type BattleshipServerMessage =
+  | {
+      type: 'state'
+      you: 'player1' | 'player2'
+      phase: GamePhase
+      fleet?: FleetPlacement
+    }
+  | { type: 'fireResult'; at: Coordinate; result: ShotResult }
+  | { type: 'error'; message: string }
+
+/**
+ * All messages that can be sent from client to server
+ */
+export type ClientMessage = ChatClientMessage | BattleshipClientMessage
+
+/**
+ * All messages that can be sent from server to client
+ */
+export type ServerMessage = InfoMessage | ChatMessage | BattleshipServerMessage
+
+/**
+ * Type guard to check if a value is a valid ServerMessage
+ */
+export function isServerMessage(value: unknown): value is ServerMessage {
+  if (typeof value !== 'object' || value === null || !('type' in value)) return false
+  const record = value as Record<string, unknown>
+  const t = record.type
+
+  // Info/Chat messages
+  if (t === 'info' || t === 'chat') return true
+
+  // Battleship game messages
+  if (t === 'state' || t === 'fireResult' || t === 'error') return true
+
+  return false
+}
+
+/**
+ * Type guard to check if a value is a valid ClientMessage
+ */
+export function isClientMessage(value: unknown): value is ClientMessage {
+  if (typeof value !== 'object' || value === null || !('type' in value)) return false
+  const record = value as Record<string, unknown>
+  const t = record.type
+
+  if (t === 'chat') {
+    return 'message' in record && typeof record.message === 'string'
+  }
+  if (t === 'deploy') {
+    return 'fleet' in record && Array.isArray(record.fleet)
+  }
+  if (t === 'fire') {
+    return 'at' in record && isCoordinate(record.at)
+  }
+  return false
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
+import { type ChatClientMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
 import { authClient } from '@/lib/auth'
@@ -12,7 +13,7 @@ interface GameChatProps {
 
 export function GameChat({ socket }: GameChatProps) {
   const { data: session } = authClient.useSession()
-  const { log, appendLog } = useGameRoomStore()
+  const { messages, addChatMessage } = useGameRoomStore()
   const [message, setMessage] = useState('')
 
   const canSend = socket?.readyState === socket.OPEN && !!session
@@ -21,8 +22,9 @@ export function GameChat({ socket }: GameChatProps) {
     e.preventDefault()
     const text = message.trim()
     if (!text || !socket) return
-    socket.send(text)
-    appendLog({ kind: 'local', text })
+    const chatMsg: ChatClientMessage = { type: 'chat', message: text }
+    socket.send(JSON.stringify(chatMsg))
+    addChatMessage(text, session?.user.name || 'Me', true)
     setMessage('')
   }
 
@@ -37,27 +39,30 @@ export function GameChat({ socket }: GameChatProps) {
         className="rounded-lg border border-slate-800 bg-black/60 p-4 h-64 overflow-y-auto font-spacemono text-xs space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
         aria-live="polite"
       >
-        {log.map((entry) => (
-          <div
-            key={entry.id}
-            className={`flex gap-3 ${
-              entry.kind === 'system'
-                ? 'text-slate-500'
-                : entry.kind === 'local'
-                  ? 'text-neon-cyan'
-                  : 'text-neon-lime'
-            }`}
-          >
-            <span className="opacity-50 select-none">
-              {entry.kind === 'system' ? '>' : entry.kind === 'local' ? '>>' : '<<'}
-            </span>
-            <span>
-              {entry.from && <b>{entry.from}: </b>}
-              {entry.text}
-            </span>
-          </div>
-        ))}
-        {log.length === 0 && (
+        {messages.map((entry) => {
+          if (entry.type === 'log') {
+            return (
+              <div key={entry.id} className="flex gap-3 text-slate-500">
+                <span className="opacity-50 select-none">&gt;</span>
+                <span>{entry.text}</span>
+              </div>
+            )
+          }
+
+          return (
+            <div
+              key={entry.id}
+              className={`flex gap-3 ${entry.isLocal ? 'text-neon-cyan' : 'text-neon-lime'}`}
+            >
+              <span className="opacity-50 select-none">{entry.isLocal ? '>>' : '<<'}</span>
+              <span>
+                <b>{entry.from}: </b>
+                {entry.text}
+              </span>
+            </div>
+          )
+        })}
+        {messages.length === 0 && (
           <div className="text-slate-600 italic">Waiting for transmission...</div>
         )}
       </div>

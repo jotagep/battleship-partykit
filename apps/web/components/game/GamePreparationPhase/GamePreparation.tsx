@@ -13,14 +13,19 @@ import {
 } from '@repo/shared/battleship'
 import { toast } from 'sonner'
 
-import { Grid } from './Grid'
-import { ShipCard } from './ShipCard'
+import { useGameRoomStore } from '@/lib/stores/game-room-store'
+
+import { Grid } from '../Grid'
+import { ShipCard } from '../ShipCard'
+
+import { GameFleetDeployed } from './GameFleetDeployed'
 
 interface GamePreparationPhaseProps {
   onDeploy: (fleet: FleetPlacement) => void
 }
 
-export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
+export function GamePreparation({ onDeploy }: GamePreparationPhaseProps) {
+  const { deployedFleet } = useGameRoomStore()
   const [placedShips, setPlacedShips] = useState<ShipPlacement[]>([])
   const [selectedShipId, setSelectedShipId] = useState<ShipId | null>(null)
   const [orientation, setOrientation] = useState<Orientation>('horizontal')
@@ -85,6 +90,10 @@ export function GamePreparationPhase({ onDeploy }: GamePreparationPhaseProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  if (deployedFleet) {
+    return <GameFleetDeployed />
+  }
 
   const allShipsPlaced = placedShips.length === DEFAULT_SHIP_TEMPLATES.length
 

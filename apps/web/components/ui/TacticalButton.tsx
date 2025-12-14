@@ -12,11 +12,12 @@ const TacticalButton = React.forwardRef<HTMLButtonElement, TacticalButtonProps>(
     return (
       <button
         className={cn(
-          'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 font-orbitron tracking-wider uppercase',
+          'cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 font-orbitron tracking-wider uppercase',
           {
             'bg-cyan-500 text-slate-950 hover:bg-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.4)] font-bold':
               variant === 'default',
-            'bg-red-500 text-slate-50 hover:bg-red-500/90': variant === 'destructive',
+            'bg-red-500/10 border border-red-500/50 text-red-400 hover:bg-red-500/20':
+              variant === 'destructive',
             'border border-slate-700 text-slate-600 bg-transparent': variant === 'outline',
             'bg-lime-400/10 border border-lime-400/50 text-lime-400 hover:bg-lime-400/20':
               variant === 'secondary',

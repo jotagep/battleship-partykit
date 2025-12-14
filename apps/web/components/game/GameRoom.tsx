@@ -1,24 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { type FleetPlacement } from '@repo/shared/battleship'
+import { useState } from 'react'
+import type { FleetPlacement } from '@repo/shared/battleship'
 import { type GameActive } from '@repo/shared/games'
-import { isChatMessage, isInfoMessage, RoomCloseCode } from '@repo/shared/messages'
+import { type BattleshipClientMessage, RoomCloseCode } from '@repo/shared/messages'
 import { ChevronDown, MessageSquare, X } from 'lucide-react'
 import { usePartySocket } from 'partysocket/react'
 import { toast } from 'sonner'
 
-import { type LogEntry, useGameRoomStore } from '@/lib/stores/game-room-store'
+import { handleGameRoomMessage } from '@/lib/game/messageHandlers'
+import { useGameRoomStore } from '@/lib/stores/game-room-store'
 
+import { TacticalButton } from '../ui/TacticalButton'
+
+import { GamePreparation } from './GamePreparationPhase/GamePreparation'
 import { GameChat } from './GameChat'
 import { GameChatNotificationDot } from './GameChatNotificationDot'
-import { GamePreparationPhase } from './GamePreparationPhase'
-
-function formatMessage(data: MessageEvent['data']): string {
-  if (typeof data === 'string') return data
-  if (data instanceof ArrayBuffer) return new TextDecoder().decode(data)
-  return new TextDecoder().decode(data.buffer)
-}
 
 interface GameRoomProps {
   game: GameActive
@@ -26,7 +23,7 @@ interface GameRoomProps {
 }
 
 export function GameRoom({ game, onLeave }: GameRoomProps) {
-  const { host, status, setStatus, appendLog, resetLog } = useGameRoomStore()
+  const { host, status, setStatus, gamePhase, setDeployedFleet, addLog } = useGameRoomStore()
   const [isChatOpen, setIsChatOpen] = useState(false)
 
   const socket = usePartySocket({
@@ -35,7 +32,7 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
     room: game.id,
     onOpen() {
       setStatus('connected')
-      appendLog({ kind: 'system', text: 'Connected' })
+      addLog('Connected', 'system')
     },
     onClose(evt) {
       setStatus('closed')
@@ -52,100 +49,94 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
         default:
           break
       }
-
       onLeave()
     },
     onError() {
       setStatus('error')
-      appendLog({ kind: 'system', text: 'Socket error' })
+      addLog('Socket error', 'system')
     },
     onMessage(evt) {
-      let text = formatMessage(evt.data)
-      let kind: LogEntry['kind'] = 'remote'
-      let from: string | undefined = undefined
-
-      try {
-        const parsed: unknown = JSON.parse(text)
-
-        if (isInfoMessage(parsed)) {
-          kind = 'system'
-          text = `${parsed.message}`
-        } else if (isChatMessage(parsed)) {
-          kind = 'remote'
-          from = parsed.from
-          text = `${parsed.message}`
-        } else if (typeof parsed === 'object' && parsed !== null && 'type' in parsed) {
-          text = JSON.stringify(parsed)
-        }
-      } catch (_err: unknown) {
-        console.error('Error parsing message', _err)
-      }
-      appendLog({ kind, text, from })
+      handleGameRoomMessage(evt)
     },
   })
 
-  useEffect(() => {
-    resetLog()
-  }, [resetLog])
-
   const handleDeploy = (fleet: FleetPlacement) => {
-    console.log('Deploying fleet', fleet)
-    toast.success('Fleet deployed! Waiting for opponent...')
-    // socket.send(JSON.stringify({ type: 'deploy', ships }))
+    setDeployedFleet(fleet)
+    toast.success('Fleet deployed!')
+
+    const deployMsg: BattleshipClientMessage = { type: 'deploy', fleet }
+    socket.send(JSON.stringify(deployMsg))
   }
 
   return (
     <div className="w-full max-w-6xl z-10 relative">
-      <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 rounded-xl shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] overflow-hidden">
-        <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
-          <div>
-            <p className="text-xs font-spacemono text-neon-cyan/70 uppercase tracking-widest mb-1">
-              <b>Mission:</b> {game.name}
-            </p>
-            <h1 className="text-3xl md:text-4xl font-orbitron font-bold tracking-wider bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
-              BATTLESHIP<span className="text-neon-cyan">.CMD</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-slate-950/50 border border-slate-800">
-              <div className="relative flex h-3 w-3">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    status === 'connected'
-                      ? 'bg-neon-lime'
-                      : status === 'error'
-                        ? 'bg-neon-red'
-                        : 'bg-amber-400'
-                  }`}
-                ></span>
-                <span
-                  className={`relative inline-flex rounded-full h-3 w-3 ${
-                    status === 'connected'
-                      ? 'bg-neon-lime'
-                      : status === 'error'
-                        ? 'bg-neon-red'
-                        : 'bg-amber-400'
-                  }`}
-                ></span>
-              </div>
-              <span className="text-sm font-spacemono uppercase text-slate-300">{status}</span>
+      <div
+        className={`transition-all duration-700 ease-out ${
+          status === 'connecting' ? 'opacity-0 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'
+        }`}
+      >
+        <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 rounded-xl shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] overflow-hidden">
+          <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
+            <div>
+              <p className="text-xs font-spacemono text-neon-cyan/70 uppercase tracking-widest mb-1">
+                <b>Mission:</b> {game.name}
+              </p>
+              <h1 className="text-3xl md:text-4xl font-orbitron font-bold tracking-wider bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                BATTLESHIP<span className="text-neon-cyan">.CMD</span>
+              </h1>
             </div>
-            <button
-              onClick={onLeave}
-              className="px-4 py-2 bg-red-500/10 border border-red-500/50 text-red-400 font-orbitron text-xs tracking-wider hover:bg-red-500/20 transition-colors uppercase"
-            >
-              Abort
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-slate-950/50 border border-slate-800">
+                <div className="relative flex h-3 w-3">
+                  <span
+                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      status === 'connected'
+                        ? 'bg-neon-lime'
+                        : status === 'error'
+                          ? 'bg-neon-red'
+                          : 'bg-amber-400'
+                    }`}
+                  ></span>
+                  <span
+                    className={`relative inline-flex rounded-full h-3 w-3 ${
+                      status === 'connected'
+                        ? 'bg-neon-lime'
+                        : status === 'error'
+                          ? 'bg-neon-red'
+                          : 'bg-amber-400'
+                    }`}
+                  ></span>
+                </div>
+                <span className="text-sm font-spacemono uppercase text-slate-300">{status}</span>
+              </div>
+              <TacticalButton onClick={onLeave} variant="destructive" size="sm">
+                Abort
+              </TacticalButton>
+            </div>
           </div>
-        </div>
 
-        <div className="p-6 md:p-8">
-          <GamePreparationPhase onDeploy={handleDeploy} />
+          <div className="p-6 md:p-8">
+            {gamePhase === 'preparing' && <GamePreparation onDeploy={handleDeploy} />}
+            {gamePhase === 'playing' && (
+              <div className="flex flex-col items-center justify-center py-20">
+                <h2 className="text-2xl font-orbitron text-neon-lime tracking-widest">
+                  COMBAT ENGAGED
+                </h2>
+                <p className="text-slate-400 font-spacemono text-sm mt-2">
+                  Battle phase coming soon...
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Floating Chat */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+      <div
+        className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 transition-all duration-700 ease-out ${
+          status === 'connecting' ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
+        }`}
+      >
         {isChatOpen && (
           <div className="w-80 md:w-96 bg-slate-950/90 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-xl p-4 animate-in slide-in-from-bottom-10 fade-in duration-200">
             <div className="flex justify-between items-center mb-4">
