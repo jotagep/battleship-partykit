@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { FleetPlacement } from '@repo/shared/battleship'
+import type { Coordinate, FleetPlacement } from '@repo/shared/battleship'
 import { type GameActive } from '@repo/shared/games'
 import { type BattleshipClientMessage, RoomCloseCode } from '@repo/shared/messages'
 import { ChevronDown, MessageSquare, X } from 'lucide-react'
@@ -11,11 +11,12 @@ import { toast } from 'sonner'
 import { handleGameRoomMessage } from '@/lib/game/messageHandlers'
 import { useGameRoomStore } from '@/lib/stores/game-room-store'
 
-import { TacticalButton } from '../ui/TacticalButton'
-
+import { GamePlay } from './GamePlayPhase/GamePlay'
 import { GamePreparation } from './GamePreparationPhase/GamePreparation'
+import { GameFinished } from './GameFinishedPhase/GameFinished'
 import { GameChat } from './GameChat'
 import { GameChatNotificationDot } from './GameChatNotificationDot'
+import { GameHeader } from './GameHeader'
 
 interface GameRoomProps {
   game: GameActive
@@ -68,6 +69,11 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
     socket.send(JSON.stringify(deployMsg))
   }
 
+  const handleFire = (at: Coordinate) => {
+    const fireMsg: BattleshipClientMessage = { type: 'fire', at }
+    socket.send(JSON.stringify(fireMsg))
+  }
+
   return (
     <div className="w-full max-w-6xl z-10 relative">
       <div
@@ -76,62 +82,16 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
         }`}
       >
         <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 rounded-xl shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] overflow-hidden">
-          <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
-            <div>
-              <p className="text-xs font-spacemono text-neon-cyan/70 uppercase tracking-widest mb-1">
-                <b>Mission:</b> {game.name}
-              </p>
-              <h1 className="text-3xl md:text-4xl font-orbitron font-bold tracking-wider bg-linear-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                BATTLESHIP<span className="text-neon-cyan">.CMD</span>
-              </h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-slate-950/50 border border-slate-800">
-                <div className="relative flex h-3 w-3">
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      status === 'connected'
-                        ? 'bg-neon-lime'
-                        : status === 'error'
-                          ? 'bg-neon-red'
-                          : 'bg-amber-400'
-                    }`}
-                  ></span>
-                  <span
-                    className={`relative inline-flex rounded-full h-3 w-3 ${
-                      status === 'connected'
-                        ? 'bg-neon-lime'
-                        : status === 'error'
-                          ? 'bg-neon-red'
-                          : 'bg-amber-400'
-                    }`}
-                  ></span>
-                </div>
-                <span className="text-sm font-spacemono uppercase text-slate-300">{status}</span>
-              </div>
-              <TacticalButton onClick={onLeave} variant="destructive" size="sm">
-                Abort
-              </TacticalButton>
-            </div>
-          </div>
+          <GameHeader gameName={game.name} status={status} onLeave={onLeave} />
 
           <div className="p-6 md:p-8">
             {gamePhase === 'preparing' && <GamePreparation onDeploy={handleDeploy} />}
-            {gamePhase === 'playing' && (
-              <div className="flex flex-col items-center justify-center py-20">
-                <h2 className="text-2xl font-orbitron text-neon-lime tracking-widest">
-                  COMBAT ENGAGED
-                </h2>
-                <p className="text-slate-400 font-spacemono text-sm mt-2">
-                  Battle phase coming soon...
-                </p>
-              </div>
-            )}
+            {gamePhase === 'playing' && <GamePlay onFire={handleFire} />}
+            {gamePhase === 'finished' && <GameFinished onLeave={onLeave} />}
           </div>
         </div>
       </div>
 
-      {/* Floating Chat */}
       <div
         className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 transition-all duration-700 ease-out ${
           status === 'connecting' ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'

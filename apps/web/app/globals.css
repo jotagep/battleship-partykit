@@ -22,6 +22,15 @@
       background-position: 40px 40px;
     }
   }
+
+  @keyframes radar-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 :root {

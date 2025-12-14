@@ -1,8 +1,11 @@
 import {
+  applyShotToFleet,
   type Coordinate,
   type FleetPlacement,
   type FleetState,
   type GamePhase,
+  isFleetSunk,
+  isWithinBoard,
   toInitialFleetState,
   validateFleetPlacement,
 } from '@repo/shared/battleship'
@@ -13,6 +16,7 @@ import {
   type InfoMessage,
   isClientMessage,
   RoomCloseCode,
+  type ShotRecord,
 } from '@repo/shared/messages'
 import { eq } from 'drizzle-orm'
 import { type Connection, type ConnectionContext, Server, type WSMessage } from 'partyserver'
@@ -43,6 +47,7 @@ interface ConnectionState {
 interface GameState {
   phase: GamePhase
   turn: 'player1' | 'player2'
+  winner?: 'player1' | 'player2'
   players: Partial<Record<'player1' | 'player2', PlayerState>>
 }
 
@@ -59,15 +64,47 @@ export class Battleship extends Server<BindingsEnv> {
     return fleet.map(({ hits: _hits, ...placement }) => placement)
   }
 
+  private getShotsWithResults(
+    shots: Coordinate[] | undefined,
+    targetFleet: FleetState | undefined,
+  ): ShotRecord[] {
+    if (!shots || !targetFleet) return []
+
+    return shots.map((shot) => {
+      const { result } = applyShotToFleet(targetFleet, shot)
+      return { x: shot.x, y: shot.y, result }
+    })
+  }
+
   private sendStateToConnection(connection: Connection<ConnectionState>): void {
     const player = this.getPlayerByConnection(connection)
     if (!player) return
+
+    const opponentRole = player.role === 'player1' ? 'player2' : 'player1'
+    const opponent = this.game.players[opponentRole]
+
+    const myShots = this.getShotsWithResults(player.state.shotsFired, opponent?.fleet)
+    const opponentShots = this.getShotsWithResults(opponent?.shotsFired, player.state.fleet)
+
+    const player1 = this.game.players.player1?.user
+    const player2 = this.game.players.player2?.user
 
     const stateMessage: BattleshipServerMessage = {
       type: 'state',
       you: player.role,
       phase: this.game.phase,
+      turn: this.game.turn,
+      winner: this.game.winner,
       fleet: this.fleetStateToPlacement(player.state.fleet),
+      myShots,
+      opponentShots,
+      players:
+        player1 && player2
+          ? {
+              player1: { name: player1.name ?? player1.id },
+              player2: { name: player2.name ?? player2.id },
+            }
+          : undefined,
     }
     connection.send(JSON.stringify(stateMessage))
   }
@@ -258,8 +295,103 @@ export class Battleship extends Server<BindingsEnv> {
         this.broadcastState()
       }
     } else if (msg.type === 'fire') {
-      // Handle fire message (future implementation)
-      console.log(`Player ${playerRole} fired at`, msg.at)
+      // Validate game state
+      if (this.game.phase !== 'playing') {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: 'Game is not in playing phase',
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Check if it's this player's turn
+      if (playerRole !== this.game.turn) {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: "It's not your turn",
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Validate coordinate
+      if (!isWithinBoard(msg.at)) {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: 'Invalid coordinate',
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Check if already fired at this coordinate
+      const alreadyFired = playerState.shotsFired?.some((c) => c.x === msg.at.x && c.y === msg.at.y)
+      if (alreadyFired) {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: 'Already fired at this coordinate',
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Get opponent
+      const opponentRole = playerRole === 'player1' ? 'player2' : 'player1'
+      const opponent = this.game.players[opponentRole]
+
+      if (!opponent?.fleet) {
+        const errorMsg: BattleshipServerMessage = {
+          type: 'error',
+          message: 'Opponent fleet not found',
+        }
+        connection.send(JSON.stringify(errorMsg))
+        return
+      }
+
+      // Record the shot
+      if (!playerState.shotsFired) {
+        playerState.shotsFired = []
+      }
+      playerState.shotsFired.push(msg.at)
+
+      // Apply shot to opponent's fleet
+      const { fleet: updatedFleet, result } = applyShotToFleet(opponent.fleet, msg.at)
+      opponent.fleet = updatedFleet
+
+      // Send result to both players
+      const resultMsg: BattleshipServerMessage = {
+        type: 'fireResult',
+        at: msg.at,
+        result,
+        turn: opponentRole,
+      }
+      this.broadcast(JSON.stringify(resultMsg))
+
+      // Check if game is over
+      if (isFleetSunk(opponent.fleet)) {
+        this.game.winner = playerRole
+        this.game.phase = 'finished'
+        const winMsg: InfoMessage = {
+          type: 'info',
+          message: `${playerState.user.name ?? playerState.user.id} wins! All enemy ships destroyed!`,
+        }
+        this.broadcast(JSON.stringify(winMsg))
+        this.broadcastState()
+        return
+      }
+
+      // Switch turn
+      this.game.turn = opponentRole
+
+      const turnMsg: InfoMessage = {
+        type: 'info',
+        message: `${opponent.user.name ?? opponent.user.id}'s turn`,
+      }
+      this.broadcast(JSON.stringify(turnMsg))
+
+      // Broadcast updated state
+      this.broadcastState()
     }
   }
 

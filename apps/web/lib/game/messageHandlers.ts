@@ -13,7 +13,23 @@ function formatMessage(data: MessageEvent['data']): string {
 
 export function handleGameRoomMessage(evt: MessageEvent) {
   const text = formatMessage(evt.data)
-  const { setGamePhase, addLog, addChatMessage, setDeployedFleet } = useGameRoomStore.getState()
+  const {
+    gamePhase,
+    setGamePhase,
+    addLog,
+    addChatMessage,
+    setDeployedFleet,
+    setTurn,
+    setWinner,
+    setMyRole,
+    setMyShots,
+    setOpponentShots,
+    setPlayers,
+    turn,
+    myRole,
+    addMyShot,
+    addOpponentShot,
+  } = useGameRoomStore.getState()
 
   try {
     const parsed: unknown = JSON.parse(text)
@@ -26,18 +42,77 @@ export function handleGameRoomMessage(evt: MessageEvent) {
     // Handle all server messages with exhaustive switch
     switch (parsed.type) {
       case 'state':
+        if (gamePhase !== 'playing' && parsed.phase === 'playing') {
+          addLog('Game started!', 'system')
+        }
         setGamePhase(parsed.phase)
+        setMyRole(parsed.you)
+        if (parsed.turn) {
+          setTurn(parsed.turn)
+        }
+        if (parsed.winner) {
+          setWinner(parsed.winner)
+        }
         if (parsed.fleet) {
           setDeployedFleet(parsed.fleet)
         }
-        if (parsed.phase === 'playing') {
-          addLog('Game started!', 'system')
+        if (parsed.myShots) {
+          setMyShots(parsed.myShots)
+        }
+        if (parsed.opponentShots) {
+          setOpponentShots(parsed.opponentShots)
+        }
+        if (parsed.players) {
+          setPlayers(parsed.players)
         }
         break
 
-      case 'fireResult':
-        addLog(`Shot at (${parsed.at.x}, ${parsed.at.y}): ${parsed.result.outcome}`, 'game')
+      case 'fireResult': {
+        const isMyShot = turn === myRole
+        const shotRecord = { x: parsed.at.x, y: parsed.at.y, result: parsed.result }
+
+        if (isMyShot) {
+          addMyShot(shotRecord)
+          addLog(`You fired at (${parsed.at.x}, ${parsed.at.y}): ${parsed.result.outcome}`, 'game')
+          if (parsed.result.outcome === 'sunk') {
+            toast.success('Enemy ship destroyed!', {
+              description: 'Target eliminated successfully.',
+            })
+          } else if (parsed.result.outcome === 'hit') {
+            toast.success('Target hit!', {
+              description: 'Direct hit confirmed.',
+            })
+          } else {
+            toast.info('Shot missed', {
+              description: 'No impact confirmed.',
+            })
+          }
+        } else {
+          addOpponentShot(shotRecord)
+          addLog(
+            `Opponent fired at (${parsed.at.x}, ${parsed.at.y}): ${parsed.result.outcome}`,
+            'game',
+          )
+          if (parsed.result.outcome === 'sunk') {
+            toast.error('Your ship has been destroyed!', {
+              description: 'Hull integrity critical.',
+            })
+          } else if (parsed.result.outcome === 'hit') {
+            toast.error('We have been hit!', {
+              description: 'Taking damage!',
+            })
+          } else {
+            toast.info('Opponent missed', {
+              description: 'Evasive maneuvers successful.',
+            })
+          }
+        }
+
+        if (parsed.turn) {
+          setTurn(parsed.turn)
+        }
         break
+      }
 
       case 'error':
         toast.error(parsed.message)

@@ -72,6 +72,12 @@ export type BattleshipClientMessage =
   | { type: 'deploy'; fleet: FleetPlacement }
   | { type: 'fire'; at: Coordinate }
 
+export interface ShotRecord {
+  x: number
+  y: number
+  result: ShotResult
+}
+
 /**
  * Game state and result messages sent from server to client
  */
@@ -80,9 +86,17 @@ export type BattleshipServerMessage =
       type: 'state'
       you: 'player1' | 'player2'
       phase: GamePhase
+      turn?: 'player1' | 'player2'
+      winner?: 'player1' | 'player2'
       fleet?: FleetPlacement
+      myShots?: ShotRecord[]
+      opponentShots?: ShotRecord[]
+      players?: {
+        player1: { name: string }
+        player2: { name: string }
+      }
     }
-  | { type: 'fireResult'; at: Coordinate; result: ShotResult }
+  | { type: 'fireResult'; at: Coordinate; result: ShotResult; turn: 'player1' | 'player2' }
   | { type: 'error'; message: string }
 
 /**
