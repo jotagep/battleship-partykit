@@ -17,6 +17,7 @@ import { GamePreparation } from './GamePreparationPhase/GamePreparation'
 import { GameChat } from './GameChat'
 import { GameChatNotificationDot } from './GameChatNotificationDot'
 import { GameHeader } from './GameHeader'
+import { GameSurrenderModal } from './GameSurrenderModal'
 
 interface GameRoomProps {
   game: GameActive
@@ -26,6 +27,7 @@ interface GameRoomProps {
 export function GameRoom({ game, onLeave }: GameRoomProps) {
   const { host, status, setStatus, gamePhase, setDeployedFleet, addLog } = useGameRoomStore()
   const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState(false)
 
   const socket = usePartySocket({
     host,
@@ -74,6 +76,16 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
     socket.send(JSON.stringify(fireMsg))
   }
 
+  const handleSurrender = () => {
+    setIsSurrenderModalOpen(true)
+  }
+
+  const handleConfirmSurrender = () => {
+    const surrenderMsg: BattleshipClientMessage = { type: 'surrender' }
+    socket.send(JSON.stringify(surrenderMsg))
+    setIsSurrenderModalOpen(false)
+  }
+
   return (
     <div className="w-full max-w-6xl z-10 relative">
       <div
@@ -82,7 +94,12 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
         }`}
       >
         <div className="backdrop-blur-xl bg-slate-900/60 border border-slate-700/50 rounded-xl shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] overflow-hidden">
-          <GameHeader gameName={game.name} status={status} onLeave={onLeave} />
+          <GameHeader
+            gameName={game.name}
+            status={status}
+            onSurrender={handleSurrender}
+            onLeave={onLeave}
+          />
 
           <div className="p-6 md:p-8">
             {gamePhase === 'preparing' && <GamePreparation onDeploy={handleDeploy} />}
@@ -91,6 +108,12 @@ export function GameRoom({ game, onLeave }: GameRoomProps) {
           </div>
         </div>
       </div>
+
+      <GameSurrenderModal
+        isOpen={isSurrenderModalOpen}
+        onClose={() => setIsSurrenderModalOpen(false)}
+        onConfirm={handleConfirmSurrender}
+      />
 
       <div
         className={`fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 transition-all duration-700 ease-out ${

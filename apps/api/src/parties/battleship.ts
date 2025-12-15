@@ -58,7 +58,10 @@ export class Battleship extends Server<BindingsEnv> {
   game: GameState = {
     phase: 'preparing',
     turn: 'player1',
-    players: {},
+    players: {
+      player1: undefined,
+      player2: undefined,
+    },
   }
 
   private fleetStateToPlacement(fleet?: FleetState): FleetPlacement | undefined {
@@ -118,18 +121,15 @@ export class Battleship extends Server<BindingsEnv> {
   }
 
   private saveState(): void {
-    console.log('Saving game state to storage')
     this.ctx.storage.kv.put<GameState>(GAME_STATE_KEY, this.game)
   }
 
   private restoreState(): boolean {
     const state = this.ctx.storage.kv.get<GameState>(GAME_STATE_KEY)
     if (!state) {
-      console.warn('No saved game state found')
       return false
     }
 
-    console.log('Restored game state from storage')
     this.game = state
     return true
   }
@@ -232,6 +232,48 @@ export class Battleship extends Server<BindingsEnv> {
             message: parsed.message,
           }
           this.broadcast(JSON.stringify(broadcastMessage), [connection.id])
+          break
+        }
+
+        case 'surrender': {
+          if (this.game.phase !== 'playing') {
+            const errorMsg: BattleshipServerMessage = {
+              type: 'error',
+              message: 'Game is not in playing phase',
+            }
+            connection.send(JSON.stringify(errorMsg))
+            return
+          }
+
+          const playerRole = player?.role
+          if (!playerRole) return
+
+          const opponentRole = playerRole === 'player1' ? 'player2' : 'player1'
+          const opponent = this.game.players[opponentRole]
+
+          this.game.winner = opponentRole
+          this.game.phase = 'finished'
+
+          const db = getDB(this.env)
+          await db
+            .update(game)
+            .set({
+              status: 'finished',
+              winnerId: opponent?.user.id ?? null,
+              updatedAt: new Date(),
+            })
+            .where(eq(game.id, this.name))
+
+          const surrenderMsg: BattleshipServerMessage = {
+            type: 'surrender',
+            winner: opponentRole,
+            message: `${player?.state.user.name ?? player?.state.user.id} has surrendered! ${
+              opponent?.user.name ?? opponent?.user.id
+            } wins!`,
+          }
+          this.broadcast(JSON.stringify(surrenderMsg))
+
+          await this.ctx.storage.deleteAll()
           break
         }
 

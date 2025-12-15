@@ -71,6 +71,7 @@ export interface ChatClientMessage {
 export type BattleshipClientMessage =
   | { type: 'deploy'; fleet: FleetPlacement }
   | { type: 'fire'; at: Coordinate }
+  | { type: 'surrender' }
 
 export interface ShotRecord {
   x: number
@@ -104,6 +105,7 @@ export type BattleshipServerMessage =
       isGameOver?: boolean
     }
   | { type: 'error'; message: string }
+  | { type: 'surrender'; winner: 'player1' | 'player2'; message?: string }
 
 /**
  * All messages that can be sent from client to server
@@ -123,11 +125,15 @@ export function isServerMessage(value: unknown): value is ServerMessage {
   const record = value as Record<string, unknown>
   const t = record.type
 
-  // Info/Chat messages
-  if (t === 'info' || t === 'chat') return true
-
-  // Battleship game messages
-  if (t === 'state' || t === 'fireResult' || t === 'error') return true
+  if (
+    t === 'info' ||
+    t === 'chat' ||
+    t === 'state' ||
+    t === 'fireResult' ||
+    t === 'error' ||
+    t === 'surrender'
+  )
+    return true
 
   return false
 }
@@ -149,5 +155,9 @@ export function isClientMessage(value: unknown): value is ClientMessage {
   if (t === 'fire') {
     return 'at' in record && isCoordinate(record.at)
   }
+  if (t === 'surrender') {
+    return true
+  }
+
   return false
 }

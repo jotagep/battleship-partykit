@@ -1,12 +1,17 @@
+import { useGameRoomStore } from '@/lib/stores/game-room-store'
+
 import { TacticalButton } from '../ui/TacticalButton'
 
 interface GameHeaderProps {
   gameName: string
   status: string
+  onSurrender: () => void
   onLeave: () => void
 }
 
-export function GameHeader({ gameName, status, onLeave }: GameHeaderProps) {
+export function GameHeader({ gameName, status, onSurrender, onLeave }: GameHeaderProps) {
+  const { gamePhase } = useGameRoomStore()
+
   return (
     <div className="p-6 md:p-8 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/40">
       <div>
@@ -41,9 +46,20 @@ export function GameHeader({ gameName, status, onLeave }: GameHeaderProps) {
           </div>
           <span className="text-sm font-spacemono uppercase text-slate-300">{status}</span>
         </div>
-        <TacticalButton onClick={onLeave} variant="destructive" size="sm">
-          Abort
-        </TacticalButton>
+        {gamePhase === 'preparing' ? (
+          <TacticalButton onClick={onLeave} variant="destructive" size="sm">
+            Abort
+          </TacticalButton>
+        ) : gamePhase === 'playing' ? (
+          <>
+            <TacticalButton onClick={onSurrender} variant="destructive" size="sm">
+              Surrender
+            </TacticalButton>
+            <TacticalButton onClick={onLeave} variant="default" size="sm">
+              Go Lobby
+            </TacticalButton>
+          </>
+        ) : null}
       </div>
     </div>
   )

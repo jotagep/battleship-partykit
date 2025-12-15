@@ -120,6 +120,15 @@ export function handleGameRoomMessage(evt: MessageEvent) {
         break
       }
 
+      case 'surrender':
+        setGamePhase('finished')
+        setWinner(parsed.winner)
+        if (parsed.message) {
+          toast.info(parsed.message)
+          addLog(parsed.message, 'system')
+        }
+        break
+
       case 'error':
         toast.error(parsed.message)
         addLog(`Error: ${parsed.message}`, 'system')
