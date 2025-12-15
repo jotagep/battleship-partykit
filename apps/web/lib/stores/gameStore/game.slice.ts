@@ -16,10 +16,12 @@ export type GameSlice = {
   setDeployedFleet: (fleet: FleetPlacement | null) => void
   setTurn: (turn: GameSlice['turn']) => void
   setWinner: (winner: GameSlice['winner']) => void
+  setPlayers: (players: GameSlice['players']) => void
   setMyRole: (role: GameSlice['myRole']) => void
+  setMyShots: (shots: ShotRecord[]) => void
+  setOpponentShots: (shots: ShotRecord[]) => void
   addMyShot: (shot: ShotRecord) => void
   addOpponentShot: (shot: ShotRecord) => void
-  setPlayers: (players: GameSlice['players']) => void
 }
 
 export const createGameSlice: StateCreator<GameSlice, [], [], GameSlice> = (set) => ({
@@ -38,8 +40,8 @@ export const createGameSlice: StateCreator<GameSlice, [], [], GameSlice> = (set)
   setWinner: (winner) => set({ winner }),
   setMyRole: (myRole) => set({ myRole }),
   setPlayers: (players) => set({ players }),
-
+  setMyShots: (shots) => set({ myShots: shots }),
+  setOpponentShots: (shots) => set({ opponentShots: shots }),
   addMyShot: (shot) => set((s) => ({ myShots: [...s.myShots, shot] })),
-
   addOpponentShot: (shot) => set((s) => ({ opponentShots: [...s.opponentShots, shot] })),
 })
