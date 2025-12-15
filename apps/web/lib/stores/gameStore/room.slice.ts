@@ -3,6 +3,8 @@ import type { StateCreator } from 'zustand'
 import type { ChatSlice } from './chat.slice'
 import type { GameSlice } from './game.slice'
 
+import { HOST } from '@/config'
+
 type GameRoomStatus = 'connecting' | 'connected' | 'closed' | 'error'
 
 export type RoomSlice = {
@@ -16,7 +18,7 @@ export type RoomSlice = {
 export const createRoomSlice: StateCreator<RoomSlice & GameSlice & ChatSlice, [], [], RoomSlice> = (
   set,
 ) => ({
-  host: 'localhost:8787',
+  host: HOST,
   status: 'connecting',
 
   setHost: (host) => set({ host }),

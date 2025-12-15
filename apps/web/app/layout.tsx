@@ -27,7 +27,7 @@ const rajdhani = Rajdhani({
 })
 
 export const metadata: Metadata = {
-  title: 'Battleship Command',
+  title: 'Battleship Command ⛴️',
   description: 'Tactical Multiplayer Game',
 }
 
