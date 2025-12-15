@@ -9,7 +9,7 @@ import { usePartySocket } from 'partysocket/react'
 import { toast } from 'sonner'
 
 import { handleGameRoomMessage } from '@/lib/game/messageHandlers'
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 import { GameFinished } from './GameFinishedPhase/GameFinished'
 import { GamePlay } from './GamePlayPhase/GamePlay'

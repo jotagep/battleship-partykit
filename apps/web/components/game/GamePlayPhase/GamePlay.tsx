@@ -3,7 +3,7 @@
 import { type Coordinate, type ShipId } from '@repo/shared/battleship'
 import { Shield, Target } from 'lucide-react'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 import { Grid } from '../Grid'
 import { ShipStatus } from '../ShipStatus'

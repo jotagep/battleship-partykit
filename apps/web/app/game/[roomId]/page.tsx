@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { GameRoom } from '@/components/game/GameRoom'
 import { Loading } from '@/components/ui/Loading'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 import { useLobbyStore } from '@/lib/stores/lobby-store'
 
 export default function GamePage({ params }: { params: Promise<{ roomId: string }> }) {

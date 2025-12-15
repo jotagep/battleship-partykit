@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 export const GameChatNotificationDot = ({ isOpenChat }: { isOpenChat: boolean }) => {
   const { messages } = useGameRoomStore()

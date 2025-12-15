@@ -5,7 +5,7 @@ import { type ChatClientMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
 import { authClient } from '@/lib/auth'
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 interface GameChatProps {
   socket: ReturnType<typeof usePartySocket>

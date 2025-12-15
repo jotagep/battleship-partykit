@@ -1,6 +1,6 @@
 import { Crosshair, Shield } from 'lucide-react'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 import { cn } from '@/lib/utils'
 
 interface GamePlayStatusBarProps {

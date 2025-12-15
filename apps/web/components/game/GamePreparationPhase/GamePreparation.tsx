@@ -13,7 +13,7 @@ import {
 } from '@repo/shared/battleship'
 import { toast } from 'sonner'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 import { Grid } from '../Grid'
 import { ShipCard } from '../ShipCard'

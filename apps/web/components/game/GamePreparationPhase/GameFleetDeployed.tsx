@@ -1,7 +1,7 @@
 import { Grid } from '@/components/game/Grid'
 import { Spinner } from '@/components/ui/Spinner'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 export const GameFleetDeployed = () => {
   const deployedFleet = useGameRoomStore((state) => state.deployedFleet)

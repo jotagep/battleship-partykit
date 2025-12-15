@@ -1,4 +1,4 @@
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 import { TacticalButton } from '../ui/TacticalButton'
 

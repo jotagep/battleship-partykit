@@ -3,7 +3,7 @@
 import { isServerMessage } from '@repo/shared/messages'
 import { toast } from 'sonner'
 
-import { useGameRoomStore } from '@/lib/stores/game-room-store'
+import { useGameRoomStore } from '@/lib/stores/gameStore'
 
 function formatMessage(data: MessageEvent['data']): string {
   if (typeof data === 'string') return data
