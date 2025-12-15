@@ -339,13 +339,21 @@ export class Battleship extends Server<BindingsEnv> {
       // Check if both players are ready
       const bothReady = Object.values(this.game.players).every((p) => p?.fleet !== undefined)
       if (bothReady) {
-        // Randomly determine who goes first
         this.game.turn = Math.random() < 0.5 ? 'player1' : 'player2'
 
-        // Notify both players that the game has started
         this.game.phase = 'playing'
 
         const startPlayer = this.game.players[this.game.turn]
+
+        const db = getDB(this.env)
+        await db
+          .update(game)
+          .set({
+            status: 'playing',
+            updatedAt: new Date(),
+          })
+          .where(eq(game.id, this.name))
+
         const startMsg: InfoMessage = {
           type: 'info',
           message: `Battle begins! ${startPlayer?.user.name ?? startPlayer?.user.id} goes first`,
