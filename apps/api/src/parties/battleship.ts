@@ -51,6 +51,8 @@ interface GameState {
   players: Partial<Record<'player1' | 'player2', PlayerState>>
 }
 
+const GAME_STATE_KEY = 'game-state'
+
 export class Battleship extends Server<BindingsEnv> {
   messageHistory: string[] = []
   game: GameState = {
@@ -115,13 +117,25 @@ export class Battleship extends Server<BindingsEnv> {
     }
   }
 
-  onStart(): void | Promise<void> {
-    // void this.sql`
-    //   CREATE TABLE IF NOT EXISTS game (
-    //     id TEXT PRIMARY KEY,
-    //     snapshot TEXT NOT NULL
-    //   )
-    // `
+  private saveState(): void {
+    console.log('Saving game state to storage')
+    this.ctx.storage.kv.put<GameState>(GAME_STATE_KEY, this.game)
+  }
+
+  private restoreState(): boolean {
+    const state = this.ctx.storage.kv.get<GameState>(GAME_STATE_KEY)
+    if (!state) {
+      console.warn('No saved game state found')
+      return false
+    }
+
+    console.log('Restored game state from storage')
+    this.game = state
+    return true
+  }
+
+  async onStart(): Promise<void> {
+    this.restoreState()
   }
 
   async onConnect(connection: Connection<ConnectionState>, ctx: ConnectionContext): Promise<void> {
@@ -134,7 +148,6 @@ export class Battleship extends Server<BindingsEnv> {
       return
     }
 
-    // Check game access here if needed (e.g., access codes)
     const db = getDB(this.env)
 
     const gameData = await db.query.game.findFirst({
@@ -156,6 +169,11 @@ export class Battleship extends Server<BindingsEnv> {
     const playerRole = user.id === gameData.player1Id ? 'player1' : 'player2'
 
     connection.setState({ user, role: playerRole })
+
+    // Restore state from DB if game state is empty
+    if (!this.game.players.player1 && !this.game.players.player2) {
+      this.restoreState()
+    }
 
     // Check if player is reconnecting (already has state)
     const existingPlayer = this.game.players[playerRole]
@@ -294,6 +312,8 @@ export class Battleship extends Server<BindingsEnv> {
 
         this.broadcastState()
       }
+
+      this.saveState()
     } else if (msg.type === 'fire') {
       // Validate game state
       if (this.game.phase !== 'playing') {
@@ -359,6 +379,9 @@ export class Battleship extends Server<BindingsEnv> {
       const { fleet: updatedFleet, result } = applyShotToFleet(opponent.fleet, msg.at)
       opponent.fleet = updatedFleet
 
+      // Save state after shot
+      this.saveState()
+
       // Check if game is over
       const isGameOver = isFleetSunk(opponent.fleet)
 
@@ -394,7 +417,10 @@ export class Battleship extends Server<BindingsEnv> {
           message: `${playerState.user.name ?? playerState.user.id} wins! All enemy ships destroyed!`,
         }
         this.broadcast(JSON.stringify(winMsg))
+
         this.broadcastState()
+
+        await this.ctx.storage.deleteAll()
       }
     }
   }
