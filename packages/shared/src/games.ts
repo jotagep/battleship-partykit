@@ -3,7 +3,7 @@
 /**
  * Game status enum
  */
-export type GameStatus = 'waiting' | 'playing' | 'finished'
+export type GameStatus = 'waiting' | 'deployment' | 'playing' | 'finished'
 
 /**
  * Create game request body

@@ -14,6 +14,8 @@ const formatStatus = (status: GameStatus) => {
   switch (status) {
     case 'waiting':
       return { label: 'WAITING', badgeClass: 'text-lime-400 bg-lime-400/10' }
+    case 'deployment':
+      return { label: 'DEPLOYMENT FLEET', badgeClass: 'text-sky-400 bg-sky-400/10' }
     case 'playing':
       return { label: 'IN COMBAT', badgeClass: 'text-red-400 bg-red-400/10' }
     case 'finished':

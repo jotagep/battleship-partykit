@@ -78,7 +78,7 @@ export const game = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'set null' }),
     player2Id: text('player2_id').references(() => user.id, { onDelete: 'set null' }),
-    status: text('status', { enum: ['waiting', 'playing', 'finished'] })
+    status: text('status', { enum: ['waiting', 'deployment', 'playing', 'finished'] })
       .notNull()
       .default('waiting'),
     winnerId: text('winner_id').references(() => user.id, { onDelete: 'set null' }),

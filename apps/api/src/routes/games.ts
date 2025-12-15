@@ -178,7 +178,7 @@ gamesRouter.patch('/:gameId/join', async (c) => {
       .update(game)
       .set({
         player2Id,
-        status: 'playing',
+        status: 'deployment',
         updatedAt: new Date(),
       })
       .where(eq(game.id, gameId))

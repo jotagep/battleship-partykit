@@ -425,10 +425,24 @@ export class Battleship extends Server<BindingsEnv> {
     }
   }
 
-  onClose(connection: Connection<ConnectionState>): void {
+  async onClose(connection: Connection<ConnectionState>): Promise<void> {
     const player = this.getPlayerByConnection(connection)
 
     if (player) {
+      if (this.game.phase === 'preparing' && player.role === 'player2') {
+        delete this.game.players[player.role]
+
+        const db = getDB(this.env)
+        await db
+          .update(game)
+          .set({
+            status: 'waiting',
+            player2Id: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(game.id, this.name))
+      }
+
       const broadcastMessage: InfoMessage = {
         type: 'info',
         message: `${player.state.user.name ?? player.state.user.id} has left the battle`,
