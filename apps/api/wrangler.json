@@ -1,5 +1,5 @@
 {
-  "name": "partykit-battleship-api",
+  "name": "battleship-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-02-07",
   "compatibility_flags": ["nodejs_compat"],

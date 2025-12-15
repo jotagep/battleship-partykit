@@ -11,7 +11,7 @@ export const auth = (env: BindingsEnv) =>
     basePath: '/auth',
     baseURL: env.AUTH_BASE_URL ?? 'http://localhost:8787',
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: ['http://localhost:3000'],
+    trustedOrigins: [env.BETTER_AUTH_URL ?? 'http://localhost:3000'],
     database: drizzleAdapter(drizzle(env.DB), {
       provider: 'sqlite',
       schema: {

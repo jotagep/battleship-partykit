@@ -6,6 +6,7 @@ interface BindingsEnv {
   AUTH_BASE_URL?: string
   AUTH_WEB_ORIGIN?: string
   BATTLESHIP_PARTY: DurableObjectNamespace<Battleship>
+  BETTER_AUTH_URL: string
   BETTER_AUTH_SECRET: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string

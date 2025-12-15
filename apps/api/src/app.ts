@@ -10,15 +10,16 @@ type ApiEnv = { Bindings: BindingsEnv }
 
 const app = new Hono<ApiEnv>()
 
-app.use(
-  '*',
-  cors({
-    origin: 'http://localhost:3000', // tu frontend
+app.use('*', async (c, next) => {
+  const corsMiddleware = cors({
+    origin: c.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
     allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-  }),
-)
+  })
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  return corsMiddleware(c, next)
+})
 
 // Games routes
 app.route('/games', gamesRouter)
