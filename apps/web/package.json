@@ -11,20 +11,29 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@repo/ui": "*",
-    "better-auth": "^1.4.5",
-    "next": "^16.0.7",
-    "partysocket": "^1.0.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@repo/shared": "workspace:*",
+    "better-auth": "^1.4.7",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.560.0",
+    "next": "^16.0.10",
+    "partysocket": "^1.1.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "autoprefixer": "^10.4.22",
+    "eslint": "^9.39.2",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^4.1.18",
     "typescript": "5.9.2"
   }
 }

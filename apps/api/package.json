@@ -1,30 +1,33 @@
 {
-	"name": "api",
-	"version": "0.1.0",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"dev": "wrangler dev src/index.ts --local --env-file=.env",
-		"build": "wrangler deploy --dry-run src/index.ts",
-		"lint": "eslint . --ext ts --max-warnings 0",
-		"check-types": "tsc --noEmit",
-		"db:generate": "drizzle-kit generate",
-		"db:studio": "drizzle-kit studio"
-	},
-	"dependencies": {
-		"better-auth": "^1.4.5",
-		"drizzle-orm": "^0.41.0",
-		"hono": "^4.9.8",
-		"hono-party": "^0.0.17",
-		"partyserver": "^0.0.75"
-	},
-	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250924.0",
-		"@repo/eslint-config": "*",
-		"@repo/typescript-config": "*",
-		"drizzle-kit": "^0.31.8",
-		"eslint": "^9.39.1",
-		"typescript": "5.9.2",
-		"wrangler": "4.53.0"
-	}
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev src/worker.ts --local --env-file=.env.local",
+    "build": "wrangler deploy --dry-run src/worker.ts",
+    "lint": "eslint . --ext ts --max-warnings 0",
+    "check-types": "tsc --noEmit",
+    "drizzle": "drizzle-kit",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "better-auth": "^1.4.5",
+    "drizzle-orm": "^0.41.0",
+    "hono": "^4.11.0",
+    "hono-party": "^0.0.17",
+    "partyserver": "^0.0.75"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "drizzle-kit": "^0.31.8",
+    "eslint": "^9.39.1",
+    "typescript": "5.9.2",
+    "wrangler": "4.54.0"
+  }
 }
