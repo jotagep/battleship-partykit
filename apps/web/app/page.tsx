@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { Lobby } from '@/components/lobby/Lobby'
@@ -7,5 +8,12 @@ import { Lobby } from '@/components/lobby/Lobby'
 export default function Home() {
   const router = useRouter()
 
-  return <Lobby onJoinRoom={(roomId) => router.push(`/game/${roomId}`)} />
+  const handleJoinRoom = useCallback(
+    (roomId: string) => {
+      router.push(`/game?roomId=${roomId}`)
+    },
+    [router],
+  )
+
+  return <Lobby onJoinRoom={handleJoinRoom} />
 }

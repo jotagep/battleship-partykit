@@ -49,7 +49,7 @@ export function LobbyJoinGameForm({ onJoin, onCancel, isLoading }: LobbyJoinGame
         </label>
         <Input
           id="access-code"
-          type="password"
+          type="text"
           placeholder="Enter code..."
           value={accessCode}
           onChange={(e) => setAccessCode(e.target.value)}

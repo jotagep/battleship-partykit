@@ -5,8 +5,8 @@ import { TacticalButton } from '@/components/ui/TacticalButton'
 interface LobbyRowGameProps {
   game: GameActive
   userId: string | undefined
-  onJoin: (gameId: string, gameName: string) => void
-  onEnter: (gameName: string) => void
+  onJoin: (gameId: string) => void
+  onEnter: (gameId: string) => void
   onRequestPassword: (gameId: string) => void
 }
 
@@ -42,11 +42,11 @@ export function LobbyRowGame({
       return
     }
 
-    onJoin(game.id, game.name)
+    onJoin(game.id)
   }
 
   const handleEnterClick = () => {
-    onEnter(game.name)
+    onEnter(game.id)
   }
 
   return (
