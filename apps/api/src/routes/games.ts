@@ -100,7 +100,13 @@ gamesRouter.get('/:gameId', async (c) => {
       return c.json(createErrorResponse(ErrorCode.GAME_NOT_FOUND), 404)
     }
 
-    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, result))
+    const gameWithoutAccessCode = {
+      ...result,
+      hasPassword: !!result.accessCode,
+      accessCode: undefined,
+    }
+
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, gameWithoutAccessCode))
   } catch (error) {
     console.error('Error fetching game:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
