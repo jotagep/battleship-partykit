@@ -25,17 +25,15 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
 
-  const selectedGameName = games.find((game) => game.id === selectedGameId)?.name || ''
-
   useEffect(() => {
     void fetchGames()
   }, [fetchGames])
 
   const handleJoinGame = useCallback(
-    async (gameId: string, gameName: string) => {
+    async (gameId: string) => {
       try {
-        await joinGame(gameId)
-        onJoinRoom(gameName)
+        await joinGame({ gameId })
+        onJoinRoom(gameId)
       } catch (error) {
         console.error('Failed to join game:', error)
       }
@@ -44,8 +42,8 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
   )
 
   const handleEnterGame = useCallback(
-    async (gameName: string) => {
-      onJoinRoom(gameName)
+    async (gameId: string) => {
+      onJoinRoom(gameId)
     },
     [onJoinRoom],
   )
@@ -55,8 +53,8 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
       if (!selectedGameId) return
 
       try {
-        await joinGame(selectedGameId, accessCode)
-        onJoinRoom(selectedGameName)
+        await joinGame({ gameId: selectedGameId, accessCode })
+        onJoinRoom(selectedGameId)
       } catch (_e) {
         toast.error('Unable to join mission. Please check the access code and try again.')
       } finally {
@@ -64,7 +62,7 @@ export function Lobby({ onJoinRoom }: LobbyProps) {
         setSelectedGameId(null)
       }
     },
-    [joinGame, onJoinRoom, selectedGameId, selectedGameName],
+    [joinGame, onJoinRoom, selectedGameId],
   )
 
   const handleRequestPassword = useCallback((gameId: string) => {

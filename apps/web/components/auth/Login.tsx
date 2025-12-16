@@ -21,7 +21,6 @@ export function Login() {
         }
         className="group relative px-12 py-6 bg-cyan-500/10 border border-cyan-500/50 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all duration-300 overflow-hidden"
       >
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
         <div className="absolute inset-0 bg-linear-to-r from-transparent via-cyan-500/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
 
         <span className="relative font-orbitron text-xl md:text-2xl font-bold text-cyan-300 tracking-widest group-hover:text-cyan-100 transition-colors">
