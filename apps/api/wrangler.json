@@ -1,8 +1,9 @@
 {
   "name": "battleship-api",
-  "main": "src/index.ts",
+  "main": "src/worker.ts",
   "compatibility_date": "2025-02-07",
   "compatibility_flags": ["nodejs_compat"],
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",
@@ -24,5 +25,9 @@
       "tag": "v1",
       "new_sqlite_classes": ["Battleship"]
     }
-  ]
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://battleship.jotagep.com",
+    "AUTH_BASE_URL": "https://api.battleship.jotagep.com"
+  }
 }
