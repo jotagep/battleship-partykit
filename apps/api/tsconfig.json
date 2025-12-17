@@ -8,6 +8,6 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/**/*.ts", "wrangler.json", "src/types/env.d.ts"],
+  "include": ["src/**/*.ts", "wrangler.jsonc", "src/types/env.d.ts"],
   "exclude": ["node_modules"]
 }

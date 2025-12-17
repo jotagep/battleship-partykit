@@ -16,59 +16,13 @@ export const RoomCloseCode: Record<string, number> = {
   ROOM_NOT_FOUND: 4003,
 } as const
 
-/**
- * Welcome message sent from server when a client connects
- */
-export interface InfoMessage {
-  type: 'info'
-  message: string
-}
-
-/**
- * Broadcast message sent from server to all clients
- */
-export interface ChatMessage {
-  type: 'chat'
-  from: string
-  message: string
-}
-
-/**
- * Type guard to check if a message is an InfoMessage
- */
-export function isInfoMessage(message: unknown): message is InfoMessage {
-  return (
-    typeof message === 'object' && message !== null && 'type' in message && message.type === 'info'
-  )
-}
-
-/**
- * Type guard to check if a message is a  ChatMessage
- */
-export function isChatMessage(message: unknown): message is ChatMessage {
-  return (
-    typeof message === 'object' &&
-    message !== null &&
-    'type' in message &&
-    message.type === 'chat' &&
-    'from' in message
-  )
-}
-
 // --- Game messages (client <-> server) ---
-
-/**
- * Chat message sent from client to server
- */
-export interface ChatClientMessage {
-  type: 'chat'
-  message: string
-}
 
 /**
  * Battleship game messages sent from client to server
  */
 export type BattleshipClientMessage =
+  | { type: 'chat'; message: string }
   | { type: 'deploy'; fleet: FleetPlacement }
   | { type: 'fire'; at: Coordinate }
   | { type: 'surrender' }
@@ -83,6 +37,8 @@ export interface ShotRecord {
  * Game state and result messages sent from server to client
  */
 export type BattleshipServerMessage =
+  | { type: 'info'; message: string }
+  | { type: 'chat'; from: string; message: string }
   | {
       type: 'state'
       you: 'player1' | 'player2'
@@ -108,19 +64,9 @@ export type BattleshipServerMessage =
   | { type: 'surrender'; winner: 'player1' | 'player2'; message?: string }
 
 /**
- * All messages that can be sent from client to server
+ * Type guard to check if a value is a valid BattleshipServerMessage
  */
-export type ClientMessage = ChatClientMessage | BattleshipClientMessage
-
-/**
- * All messages that can be sent from server to client
- */
-export type ServerMessage = InfoMessage | ChatMessage | BattleshipServerMessage
-
-/**
- * Type guard to check if a value is a valid ServerMessage
- */
-export function isServerMessage(value: unknown): value is ServerMessage {
+export function isServerMessage(value: unknown): value is BattleshipServerMessage {
   if (typeof value !== 'object' || value === null || !('type' in value)) return false
   const record = value as Record<string, unknown>
   const t = record.type
@@ -139,9 +85,9 @@ export function isServerMessage(value: unknown): value is ServerMessage {
 }
 
 /**
- * Type guard to check if a value is a valid ClientMessage
+ * Type guard to check if a value is a valid BattleshipClientMessage
  */
-export function isClientMessage(value: unknown): value is ClientMessage {
+export function isClientMessage(value: unknown): value is BattleshipClientMessage {
   if (typeof value !== 'object' || value === null || !('type' in value)) return false
   const record = value as Record<string, unknown>
   const t = record.type
