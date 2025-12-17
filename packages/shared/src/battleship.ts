@@ -1,6 +1,7 @@
 export const BOARD_SIZE = 10 as const
 
 export type GamePhase = 'preparing' | 'playing' | 'finished'
+export type GameRolePlayer = 'player1' | 'player2'
 
 export type Coordinate = { x: number; y: number }
 export type Orientation = 'horizontal' | 'vertical'

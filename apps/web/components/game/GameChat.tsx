@@ -1,7 +1,7 @@
 'use client'
 
 import { type FormEvent, useState } from 'react'
-import { type ChatClientMessage } from '@repo/shared/messages'
+import { BattleshipClientMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
 import { authClient } from '@/lib/auth'
@@ -22,7 +22,7 @@ export function GameChat({ socket }: GameChatProps) {
     e.preventDefault()
     const text = message.trim()
     if (!text || !socket) return
-    const chatMsg: ChatClientMessage = { type: 'chat', message: text }
+    const chatMsg: BattleshipClientMessage = { type: 'chat', message: text }
     socket.send(JSON.stringify(chatMsg))
     addChatMessage(text, session?.user.name || 'Me', true)
     setMessage('')
