@@ -1,33 +1,41 @@
 {
+  "$schema": "./../../node_modules/wrangler/config-schema.json",
   "name": "battleship-api",
   "main": "src/worker.ts",
   "compatibility_date": "2025-02-07",
   "compatibility_flags": ["nodejs_compat"],
+
+  // Disable workers.dev subdomain deployment
+  "workers_dev": false,
   "preview_urls": false,
+
+  // Define D1 database bindings
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "battleship-db",
       "database_id": "4ecc8015-c35d-4318-8add-69c1795d048f",
-      "migrations_dir": "drizzle/"
-    }
+      "migrations_dir": "drizzle/",
+    },
   ],
+  // Define Durable Object bindings
   "durable_objects": {
     "bindings": [
       {
         "name": "BATTLESHIP-PARTY",
-        "class_name": "Battleship"
-      }
-    ]
+        "class_name": "Battleship",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["Battleship"]
-    }
+      "new_sqlite_classes": ["Battleship"],
+    },
   ],
+  // Define environment variables no secret bindings
   "vars": {
     "BETTER_AUTH_URL": "https://battleship.jotagep.com",
-    "AUTH_BASE_URL": "https://api.battleship.jotagep.com"
-  }
+    "AUTH_BASE_URL": "https://api.battleship.jotagep.com",
+  },
 }
