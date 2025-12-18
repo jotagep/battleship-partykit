@@ -1,6 +1,6 @@
 'use client'
 
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { BattleshipClientMessage } from '@repo/shared/messages'
 import { usePartySocket } from 'partysocket/react'
 
@@ -15,6 +15,13 @@ export function GameChat({ socket }: GameChatProps) {
   const { data: session } = authClient.useSession()
   const { messages, addChatMessage } = useGameRoomStore()
   const [message, setMessage] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const canSend = socket?.readyState === socket.OPEN && !!session
 
@@ -36,6 +43,7 @@ export function GameChat({ socket }: GameChatProps) {
       </div>
 
       <div
+        ref={scrollRef}
         className="rounded-lg border border-slate-800 bg-black/60 p-4 h-64 overflow-y-auto font-spacemono text-xs space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
         aria-live="polite"
       >
