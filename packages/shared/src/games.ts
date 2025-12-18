@@ -46,3 +46,20 @@ export interface Game {
 export interface GameActive extends Omit<Game, 'accessCode'> {
   hasPassword: boolean
 }
+
+export interface GameHistory extends Game {
+  player1: {
+    id: string
+    name: string
+    image?: string | null
+  }
+  player2: {
+    id: string
+    name: string
+    image?: string | null
+  } | null
+  winner: {
+    id: string
+    name: string
+  } | null
+}
