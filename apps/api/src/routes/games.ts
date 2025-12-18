@@ -5,7 +5,7 @@ import {
   SuccessCode,
 } from '@repo/shared/apiMessage'
 import { CreateGameBody, JoinGameBody, UpdateGameBody } from '@repo/shared/games'
-import { desc, eq, not } from 'drizzle-orm'
+import { desc, eq, not, or } from 'drizzle-orm'
 import { Hono } from 'hono'
 
 import { game } from '../db/schema'
@@ -79,6 +79,50 @@ gamesRouter.get('/active', async (c) => {
     return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, gamesWithoutAccessCode))
   } catch (error) {
     console.error('Error fetching public games:', error)
+    return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
+  }
+})
+
+/**
+ * READ - Get history of games for the current user
+ * GET /games/history
+ */
+gamesRouter.get('/history', async (c) => {
+  const user = c.get('USER')
+  const userId = user.id
+
+  try {
+    const db = getDB(c.env)
+    const results = await db.query.game.findMany({
+      where: or(eq(game.player1Id, userId), eq(game.player2Id, userId)),
+      with: {
+        player1: {
+          columns: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        player2: {
+          columns: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+        winner: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [desc(game.createdAt)],
+    })
+
+    return c.json(createSuccessResponse(SuccessCode.GAME_RETRIEVED, results))
+  } catch (error) {
+    console.error('Error fetching game history:', error)
     return c.json(createErrorResponse(ErrorCode.SERVER_DATABASE_ERROR), 500)
   }
 })

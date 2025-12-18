@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 // Core schema aligned with Better Auth docs
@@ -15,6 +15,12 @@ export const user = sqliteTable('user', {
     .notNull()
     .default(sql`(unixepoch())`),
 })
+
+export const userRelations = relations(user, ({ many }) => ({
+  gamesAsPlayer1: many(game, { relationName: 'player1' }),
+  gamesAsPlayer2: many(game, { relationName: 'player2' }),
+  gamesWon: many(game, { relationName: 'winner' }),
+}))
 
 export const session = sqliteTable('session', {
   id: text('id').primaryKey(),
@@ -97,6 +103,24 @@ export const game = sqliteTable(
     index('game_created_at_idx').on(table.createdAt),
   ],
 )
+
+export const gameRelations = relations(game, ({ one }) => ({
+  player1: one(user, {
+    fields: [game.player1Id],
+    references: [user.id],
+    relationName: 'player1',
+  }),
+  player2: one(user, {
+    fields: [game.player2Id],
+    references: [user.id],
+    relationName: 'player2',
+  }),
+  winner: one(user, {
+    fields: [game.winnerId],
+    references: [user.id],
+    relationName: 'winner',
+  }),
+}))
 
 export type User = typeof user.$inferSelect
 export type Session = typeof session.$inferSelect

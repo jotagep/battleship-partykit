@@ -1,5 +1,5 @@
 import { type SuccessResponse } from '@repo/shared/apiMessage'
-import { type GameActive } from '@repo/shared/games'
+import { type GameActive, type GameHistory } from '@repo/shared/games'
 
 import { API_BASE_URL } from '@/config'
 
@@ -83,6 +83,27 @@ export const gamesApi = {
     }
 
     return payload.data
+  },
+
+  /**
+   * Fetch game history for the current user
+   */
+  async fetchGameHistory(): Promise<GameHistory[]> {
+    const response = await fetch(`${API_BASE_URL}/games/history`, {
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch game history')
+    }
+
+    const payload: SuccessResponse<GameHistory[]> = await response.json()
+
+    if (!payload.success) {
+      throw new Error(payload.message || 'Failed to fetch game history')
+    }
+
+    return payload.data ?? []
   },
 
   /**
