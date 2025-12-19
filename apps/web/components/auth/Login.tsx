@@ -2,16 +2,7 @@ import { authClient } from '@/lib/auth'
 
 export function Login() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-12 z-10">
-      <div className="space-y-4">
-        <h1 className="text-5xl md:text-7xl font-orbitron font-bold text-transparent bg-clip-text bg-linear-to-b from-cyan-200 to-cyan-500 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)] tracking-wider">
-          BATTLESHIP COMMAND
-        </h1>
-        <p className="text-sm md:text-base font-spacemono text-slate-400 tracking-widest uppercase max-w-2xl mx-auto">
-          Strategy decides who floats — and who sinks.
-        </p>
-      </div>
-
+    <div className="flex flex-col items-center justify-center min-h-[30vh] text-center space-y-12 z-10">
       <button
         onClick={() =>
           authClient.signIn.social({
