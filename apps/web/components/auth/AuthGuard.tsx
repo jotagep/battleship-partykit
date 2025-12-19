@@ -15,7 +15,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   if (!session) {
-    return <Login />
+    return <Login text="AUTHENTICATE ACCESS" />
   }
 
   return children
